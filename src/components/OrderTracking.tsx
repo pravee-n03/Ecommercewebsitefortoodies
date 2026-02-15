@@ -2,23 +2,46 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Package, Truck, MapPin, CheckCircle, Clock, ExternalLink } from 'lucide-react';
-import { motion } from 'motion/react';
-import { User, Order } from '../types';
+import { Package, Truck, MapPin, CheckCircle, Clock, ExternalLink, Palette, ChevronDown, ChevronUp } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { User, Order, Product } from '../types';
+import { storageUtils } from '../utils/storage';
 
 interface OrderTrackingProps {
   user: User;
 }
 
 export function OrderTracking({ user }: OrderTrackingProps) {
+  // Safety check for user
+  if (!user) {
+    return (
+      <Card className="glass-card border-dashed border-cyan-500/20 py-16">
+        <CardContent className="flex flex-col items-center justify-center text-center space-y-4">
+          <div className="w-20 h-20 bg-slate-800/30 rounded-full flex items-center justify-center">
+            <Package className="w-10 h-10 text-slate-600" />
+          </div>
+          <div>
+            <p className="text-white font-bold text-lg">Unable to load orders</p>
+            <p className="text-slate-500 text-sm max-w-xs mx-auto mt-1">
+              Please log in to view your orders.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const [orders, setOrders] = useState<Order[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
   useEffect(() => {
     // Sort orders by date, newest first
-    const sortedOrders = [...user.orders].sort((a, b) => 
+    const sortedOrders = [...(user.orders || [])].sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
     setOrders(sortedOrders);
+    setProducts(storageUtils.getProducts());
   }, [user]);
 
   const getStatusColor = (status: string) => {
@@ -51,6 +74,10 @@ export function OrderTracking({ user }: OrderTrackingProps) {
     }
   };
 
+  const getProductName = (productId: string) => {
+    return products.find(p => p.id === productId)?.name || 'Unknown Product';
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -58,7 +85,7 @@ export function OrderTracking({ user }: OrderTrackingProps) {
           <Package className="w-6 h-6 text-cyan-400" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-cyan-100">Track Your Orders</h2>
+          <h2 className="text-2xl font-bold text-white">Track Your Orders</h2>
           <p className="text-slate-400">Monitor the status of your purchases</p>
         </div>
       </div>
@@ -66,9 +93,9 @@ export function OrderTracking({ user }: OrderTrackingProps) {
       {orders.length === 0 ? (
         <Card className="glass-card border-cyan-500/20">
           <CardContent className="pt-12 pb-12 text-center">
-            <Package className="w-16 h-16 text-slate-500 mx-auto mb-4" />
-            <p className="text-lg text-slate-400 mb-2">No orders yet</p>
-            <p className="text-sm text-slate-500">Your order history will appear here</p>
+            <Package className="w-16 h-16 text-slate-700 mx-auto mb-4" />
+            <p className="text-lg text-white font-bold mb-2">No orders yet</p>
+            <p className="text-sm text-slate-500">Your order history will appear here once you make a purchase.</p>
           </CardContent>
         </Card>
       ) : (
@@ -78,122 +105,128 @@ export function OrderTracking({ user }: OrderTrackingProps) {
               key={order.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              whileHover={{ y: -4 }}
-              transition={{ duration: 0.3 }}
             >
-              <Card className="glass-card border-cyan-500/20 overflow-hidden">
-                <CardHeader className="border-b border-cyan-500/20">
-                  <div className="flex items-start justify-between">
+              <Card className={`glass-card border-2 transition-all duration-300 ${
+                expandedOrder === order.id ? 'border-cyan-500/40' : 'border-cyan-500/20'
+              } overflow-hidden`}>
+                <CardHeader className="cursor-pointer" onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}>
+                  <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                     <div>
                       <CardTitle className="text-cyan-100 flex items-center gap-2 mb-2">
-                        <Package className="w-5 h-5 text-cyan-400" />
-                        Order #{order.id.slice(0, 12)}
+                        Order #{order.id.slice(-8).toUpperCase()}
                       </CardTitle>
-                      <p className="text-sm text-slate-400">
-                        Placed on {new Date(order.date).toLocaleDateString()} at {new Date(order.date).toLocaleTimeString()}
+                      <p className="text-xs text-slate-400">
+                        Placed on {new Date(order.date).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
-                        ${order.total.toFixed(2)}
+                    <div className="text-right flex flex-col items-end">
+                      <div className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
+                        ₹{order.total.toLocaleString('en-IN')}
                       </div>
-                      <Badge className={`mt-2 ${getStatusColor(order.status)}`}>
-                        {getStatusIcon(order.status)}
-                        <span className="ml-1 capitalize">{order.status}</span>
-                      </Badge>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge className={`${getStatusColor(order.status)} font-bold`}>
+                          {getStatusIcon(order.status)}
+                          <span className="ml-1.5 capitalize">{order.status}</span>
+                        </Badge>
+                        {expandedOrder === order.id ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                      </div>
                     </div>
                   </div>
                 </CardHeader>
 
-                <CardContent className="pt-6 space-y-6">
-                  {/* Progress Bar */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm text-slate-400 mb-2">
-                      <span>Order Progress</span>
-                      <span>{getProgressPercentage(order.status)}%</span>
-                    </div>
-                    <div className="h-2 bg-[#0f172a]/50 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${getProgressPercentage(order.status)}%` }}
-                        transition={{ duration: 1, delay: 0.2 }}
-                        className="h-full bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full relative"
-                      >
-                        <div className="absolute inset-0 bg-white/20 animate-pulse-glow" />
-                      </motion.div>
-                    </div>
-                  </div>
-
-                  {/* Status Timeline */}
-                  <div className="grid grid-cols-4 gap-2">
-                    {['pending', 'processing', 'shipped', 'delivered'].map((status, index) => {
-                      const isActive = ['pending', 'processing', 'shipped', 'delivered'].indexOf(order.status) >= index;
-                      return (
-                        <div key={status} className="text-center">
-                          <div className={`w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center transition-all ${
-                            isActive 
-                              ? 'bg-gradient-to-br from-cyan-500/30 to-teal-500/30 border-2 border-cyan-500' 
-                              : 'bg-slate-800/30 border-2 border-slate-700'
-                          }`}>
-                            {status === 'pending' && <Clock className={`w-5 h-5 ${isActive ? 'text-cyan-400' : 'text-slate-600'}`} />}
-                            {status === 'processing' && <Package className={`w-5 h-5 ${isActive ? 'text-cyan-400' : 'text-slate-600'}`} />}
-                            {status === 'shipped' && <Truck className={`w-5 h-5 ${isActive ? 'text-cyan-400' : 'text-slate-600'}`} />}
-                            {status === 'delivered' && <CheckCircle className={`w-5 h-5 ${isActive ? 'text-green-400' : 'text-slate-600'}`} />}
+                <AnimatePresence>
+                  {expandedOrder === order.id && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                    >
+                      <CardContent className="pt-6 border-t border-cyan-500/10 space-y-6">
+                        {/* Progress Bar */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
+                            <span>Order Status</span>
+                            <span className="text-cyan-400">{getProgressPercentage(order.status)}% Complete</span>
                           </div>
-                          <p className={`text-xs capitalize ${isActive ? 'text-cyan-300' : 'text-slate-600'}`}>
-                            {status}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Tracking Information */}
-                  {order.trackingNumber ? (
-                    <div className="bg-gradient-to-br from-cyan-500/10 to-teal-500/10 border border-cyan-500/30 rounded-xl p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="bg-cyan-500/20 p-2 rounded-lg">
-                          <MapPin className="w-5 h-5 text-cyan-400" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-cyan-100 mb-1">Tracking Information</p>
-                          <p className="text-lg text-cyan-300 font-mono mb-2">{order.trackingNumber}</p>
-                          {order.trackingUrl && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20"
-                              onClick={() => window.open(order.trackingUrl, '_blank')}
+                          <div className="h-1.5 bg-slate-800/50 rounded-full overflow-hidden">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${getProgressPercentage(order.status)}%` }}
+                              transition={{ duration: 1, delay: 0.2 }}
+                              className="h-full bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full relative"
                             >
-                              <ExternalLink className="w-4 h-4 mr-2" />
-                              Track Package
-                            </Button>
-                          )}
+                              <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                            </motion.div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-slate-800/30 border border-slate-700 rounded-xl p-4">
-                      <div className="flex items-start gap-3">
-                        <Clock className="w-5 h-5 text-slate-500 mt-0.5" />
-                        <div>
-                          <p className="font-semibold text-slate-300 mb-1">Tracking Pending</p>
-                          <p className="text-sm text-slate-400">
-                            Tracking information will be available once your order is shipped. 
-                            You'll receive a notification via email and WhatsApp.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
-                  {/* Order Details */}
-                  <div className="pt-4 border-t border-cyan-500/20">
-                    <p className="text-sm text-slate-400">
-                      <span className="text-slate-300 font-medium">Items:</span> {order.items.length} product(s)
-                    </p>
-                  </div>
-                </CardContent>
+                        {/* Order Items */}
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Ordered Items</h4>
+                          <div className="grid gap-2">
+                            {order.items.map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-[#0f172a]/30 border border-white/5">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                                    {idx + 1}
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-white text-sm">{getProductName(item.productId)}</p>
+                                    <p className="text-[10px] text-slate-500 font-bold">Qty: {item.quantity}</p>
+                                  </div>
+                                </div>
+                                {item.customDesignUrl && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10 h-8 text-[10px] font-bold uppercase tracking-widest"
+                                    onClick={() => window.open(item.customDesignUrl, '_blank')}
+                                  >
+                                    <Palette className="w-3 h-3 mr-2" />
+                                    View Design
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Tracking Information */}
+                        {order.trackingNumber ? (
+                          <div className="bg-gradient-to-br from-cyan-500/10 to-teal-500/10 border border-cyan-500/30 rounded-2xl p-4">
+                            <div className="flex items-start gap-4">
+                              <div className="bg-cyan-500/20 p-2.5 rounded-xl">
+                                <MapPin className="w-5 h-5 text-cyan-400" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-bold text-white mb-1">Logistics Detail</p>
+                                <p className="text-lg text-cyan-300 font-mono tracking-wider mb-3">{order.trackingNumber}</p>
+                                {order.trackingUrl && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 rounded-xl px-6"
+                                    onClick={() => window.open(order.trackingUrl, '_blank')}
+                                  >
+                                    <ExternalLink className="w-4 h-4 mr-2" />
+                                    Track Live Package
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-4 flex items-center gap-4">
+                            <Clock className="w-5 h-5 text-slate-600" />
+                            <p className="text-xs text-slate-500 leading-relaxed font-bold uppercase tracking-widest">
+                              Logistics information pending dispatch
+                            </p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </Card>
             </motion.div>
           ))}

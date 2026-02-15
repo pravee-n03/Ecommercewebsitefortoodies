@@ -1,27 +1,38 @@
-import { useState, useEffect } from 'react';
-import { User, Product, CartItem, Order } from '../types';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ShoppingBag, Palette, Package, User as UserIcon, X, Menu, LogOut, Search, Bell, HeadphonesIcon, MessageCircle } from 'lucide-react';
+import { OrderTracking } from './OrderTracking';
+import { CustomerProfile } from './CustomerProfile';
+import { PaymentDialog } from './PaymentDialog';
+import { CheckoutDialog } from './CheckoutDialog';
+import { PopupDisplay } from './PopupDisplay';
+import { ShoppingCart } from './ShoppingCart';
+import { ProductCard } from './ProductCard';
+import { ProductDetailModal } from './ProductDetailModal';
+import { SavedDesigns } from './SavedDesigns';
+import { StudioMyCustomDesigns } from './StudioMyCustomDesigns';
+import { HelpCenter } from './HelpCenter';
+
+import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Card, CardContent } from './ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { LogOut, ExternalLink, Palette, ShoppingCart as CartIcon, Package, Store } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Label } from './ui/label';
+import { Badge } from './ui/badge';
+
+import { User, Product, CartItem, Order, CustomDesign } from '../types';
 import { storageUtils } from '../utils/storage';
 import { notificationService } from '../utils/notifications';
-import { ProductCard } from './ProductCard';
-import { ProductDetailModal } from './ProductDetailModal';
-import { ShoppingCart } from './ShoppingCart';
-import { OrderTracking } from './OrderTracking';
-import { toast } from 'sonner@2.0.3';
+
 import toodiesLogo from 'figma:asset/d31f1d417f75594ba1ab67a4c64ef32e85ec2234.png';
 
 interface CustomerDashboardProps {
   user: User;
   onLogout: () => void;
+  onOpen2DStudio?: () => void;
 }
 
-export function CustomerDashboard({ user, onLogout }: CustomerDashboardProps) {
+export function CustomerDashboard({ user, onLogout, onOpen2DStudio }: CustomerDashboardProps) {
   const [activeTab, setActiveTab] = useState('shop');
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -30,13 +41,46 @@ export function CustomerDashboard({ user, onLogout }: CustomerDashboardProps) {
   const [selectedGender, setSelectedGender] = useState('all');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [cart, setCart] = useState<CartItem[]>(user.cart);
-  const [designerUrl, setDesignerUrl] = useState('');
+  const [cart, setCart] = useState<CartItem[]>(user.cart || []);
   const [currentUser, setCurrentUser] = useState<User>(user);
+  const [is3DDesignerOpen, setIs3DDesignerOpen] = useState(false);
+  const [selected3DProduct, setSelected3DProduct] = useState<Product | null>(null);
+  const [editingDesignId, setEditingDesignId] = useState<string | undefined>(undefined);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [isCheckoutDialogOpen, setIsCheckoutDialogOpen] = useState(false);
+  const [checkoutTotal, setCheckoutTotal] = useState(0);
+  const [checkoutDiscount, setCheckoutDiscount] = useState(0);
+  const [checkoutCouponCode, setCheckoutCouponCode] = useState('');
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [customDesignUrl, setCustomDesignUrl] = useState('');
+  const [isHelpCenterOpen, setIsHelpCenterOpen] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Help Center button dragging
+  const [helpButtonPosition, setHelpButtonPosition] = useState({ x: 0, y: 0 });
+  const [isHelpButtonDragging, setIsHelpButtonDragging] = useState(false);
+  const [dragHasMoved, setDragHasMoved] = useState(false);
+  const helpButtonDragStart = useRef({ x: 0, y: 0 });
+  const helpButtonMouseStart = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     loadProducts();
     refreshUser();
+    
+    // Check for notifications
+    const popups = storageUtils.getPopupMessages();
+    const userPopups = popups.filter(p => 
+      p.isActive && 
+      (p.targetAudience === 'all' || 
+      (user.emailVerified ? p.targetAudience === 'verified' : p.targetAudience === 'unverified'))
+    );
+    setNotificationCount(userPopups.length);
+
+    // Initial mobile check
+    if (window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -47,7 +91,7 @@ export function CustomerDashboard({ user, onLogout }: CustomerDashboardProps) {
     const updatedUser = storageUtils.getCurrentUser();
     if (updatedUser) {
       setCurrentUser(updatedUser);
-      setCart(updatedUser.cart);
+      setCart(updatedUser.cart || []);
     }
   };
 
@@ -104,6 +148,31 @@ export function CustomerDashboard({ user, onLogout }: CustomerDashboardProps) {
     toast.success('Added to cart!');
   };
 
+  const handleAddToCartWithDesign = (productId: string, designUrl: string) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    const variationId = product.variations[0].id;
+    
+    const existingItemIndex = cart.findIndex(
+      item => item.productId === productId && item.variationId === variationId && item.customDesignUrl === designUrl
+    );
+
+    let newCart: CartItem[];
+    if (existingItemIndex >= 0) {
+      newCart = [...cart];
+      newCart[existingItemIndex].quantity += 1;
+    } else {
+      newCart = [...cart, { productId, variationId, quantity: 1, customDesignUrl: designUrl }];
+    }
+
+    setCart(newCart);
+    const updatedUser = { ...currentUser, cart: newCart };
+    storageUtils.updateCurrentUser(updatedUser);
+    setCurrentUser(updatedUser);
+    toast.success('Custom design added to cart!');
+  };
+
   const handleUpdateQuantity = (productId: string, variationId: string, quantity: number) => {
     if (quantity < 1) return;
     
@@ -135,7 +204,12 @@ export function CustomerDashboard({ user, onLogout }: CustomerDashboardProps) {
       return;
     }
 
-    // Calculate total
+    if (!currentUser.emailVerified || !currentUser.mobileVerified) {
+      toast.error('Please verify your email and mobile number before placing an order');
+      setActiveTab('profile');
+      return;
+    }
+
     let total = 0;
     cart.forEach(cartItem => {
       const product = products.find(p => p.id === cartItem.productId);
@@ -147,32 +221,71 @@ export function CustomerDashboard({ user, onLogout }: CustomerDashboardProps) {
       }
     });
 
-    // Create order
+    setCheckoutTotal(total);
+    setCheckoutDiscount(0);
+    setCheckoutCouponCode('');
+    setShippingAddress(currentUser.address || '');
+    setCustomDesignUrl('');
+    setIsCheckoutDialogOpen(true);
+  };
+
+  const handleProceedToPayment = (address: string, designUrl: string) => {
+    setShippingAddress(address);
+    setCustomDesignUrl(designUrl);
+    setIsCheckoutDialogOpen(false);
+    setIsPaymentDialogOpen(true);
+  };
+
+  const handlePaymentSuccess = (paymentMethod: 'razorpay' | 'cod' | 'upi', paymentData?: any) => {
     const order: Order = {
       id: Date.now().toString(),
       items: [...cart],
-      total,
+      total: checkoutTotal,
       date: new Date().toISOString(),
-      status: 'pending',
+      status: paymentMethod === 'cod' ? 'pending' : 'processing',
       userId: currentUser.id,
       userEmail: currentUser.email,
       userMobile: currentUser.mobile,
-      notificationSent: true
+      shippingAddress: shippingAddress,
+      notificationSent: true,
+      discount: checkoutDiscount,
+      couponCode: checkoutCouponCode || undefined,
+      paymentMethod: paymentMethod,
+      paymentStatus: paymentMethod === 'cod' ? 'pending' : 'completed',
+      paymentId: paymentData?.paymentId,
+      razorpayOrderId: paymentData?.razorpayOrderId,
+      razorpayPaymentId: paymentData?.razorpayPaymentId,
+      razorpaySignature: paymentData?.razorpaySignature,
     };
 
-    // Save order
     storageUtils.createOrder(order);
-
-    // Send notifications
+    
+    // Mark customer designs in the order as paid
+    if (currentUser.savedCustomerDesigns && currentUser.savedCustomerDesigns.length > 0) {
+      // Find designs that are in the order
+      const updatedDesigns = currentUser.savedCustomerDesigns.map(design => {
+        // Check if this design's product is in the order
+        const isInOrder = cart.some(item => item.productId === design.productId);
+        if (isInOrder && design.paymentStatus !== 'paid') {
+          return {
+            ...design,
+            paymentStatus: 'paid' as const,
+            orderId: order.id
+          };
+        }
+        return design;
+      });
+      
+      const updatedUser = { ...currentUser, savedCustomerDesigns: updatedDesigns };
+      storageUtils.updateCurrentUser(updatedUser);
+    }
+    
     notificationService.sendWhatsAppNotification(currentUser.mobile, order);
     notificationService.sendEmailNotification(currentUser.email, order);
 
-    toast.success('Order placed successfully! Check your email and WhatsApp for confirmation.');
-    
-    // Refresh user data
+    toast.success('Order placed successfully!');
+    setIsPaymentDialogOpen(false);
     refreshUser();
-    
-    // Switch to orders tab
     setActiveTab('orders');
   };
 
@@ -182,191 +295,436 @@ export function CustomerDashboard({ user, onLogout }: CustomerDashboardProps) {
   };
 
   const handleDesignerClick = () => {
-    if (designerUrl) {
-      window.open(designerUrl, '_blank');
-    } else {
-      toast.info('3D Designer integration coming soon!');
+    // Get products that have 2D model configurations
+    console.log('=== CHECKING FOR 2D MODEL CONFIGURATIONS ===');
+    console.log('Total products:', products.length);
+    
+    const allConfigs = storageUtils.get3DModelConfigs();
+    console.log('All 2D model configs:', allConfigs);
+    
+    const productsWithModels = products.filter(p => {
+      console.log(`Checking product ID: ${p.id}`);
+      const config = storageUtils.get3DModelConfigByProductId(p.id);
+      console.log(`Config for product ${p.id}:`, config);
+      return config !== null;
+    });
+
+    console.log('Products with models:', productsWithModels);
+
+    if (productsWithModels.length === 0) {
+      toast.error('No products configured for 2D design yet', {
+        description: 'Please check back later or contact support'
+      });
+      return;
+    }
+
+    // If only one product, open directly
+    if (productsWithModels.length === 1) {
+      setSelected3DProduct(productsWithModels[0]);
+      setIs3DDesignerOpen(true);
+      return;
+    }
+
+    // Multiple products - show selection toast
+    toast.info('Click on any product to start designing!', {
+      description: 'Look for the "Create 2D Design" button on product cards'
+    });
+  };
+
+  // Improved Help Center button drag handlers
+  const handleHelpButtonMouseDown = (e: React.MouseEvent) => {
+    setIsHelpButtonDragging(true);
+    setDragHasMoved(false);
+    helpButtonDragStart.current = helpButtonPosition;
+    helpButtonMouseStart.current = { x: e.clientX, y: e.clientY };
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isHelpButtonDragging) return;
+      
+      const dx = e.clientX - helpButtonMouseStart.current.x;
+      const dy = e.clientY - helpButtonMouseStart.current.y;
+      
+      // If moved more than 5px, it's a drag
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        setDragHasMoved(true);
+      }
+      
+      setHelpButtonPosition({ 
+        x: helpButtonDragStart.current.x + dx, 
+        y: helpButtonDragStart.current.y + dy 
+      });
+    };
+
+    const handleMouseUp = () => {
+      if (isHelpButtonDragging) {
+        setIsHelpButtonDragging(false);
+      }
+    };
+
+    if (isHelpButtonDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isHelpButtonDragging]);
+
+  const handleHelpButtonClick = () => {
+    // Only open if not dragged significantly
+    if (!dragHasMoved) {
+      setIsHelpCenterOpen(true);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#0a0e1a] relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl animate-pulse-glow" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '1s' }} />
-      </div>
+  const navItems = [
+    { id: 'shop', label: 'Store', icon: ShoppingBag },
+    { id: 'designs', label: 'Studio', icon: Palette },
+    { id: 'orders', label: 'Orders', icon: Package },
+    { id: 'profile', label: 'Profile', icon: UserIcon },
+  ];
 
-      {/* Header */}
-      <header className="glass-card border-b border-cyan-500/20 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <motion.div 
-                className="flex items-center gap-3"
-                whileHover={{ scale: 1.05 }}
-              >
-                <img src={toodiesLogo} alt="Toodies" className="h-10 w-auto" />
-              </motion.div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <ShoppingCart
-                cart={cart}
-                products={products}
-                onUpdateQuantity={handleUpdateQuantity}
-                onRemoveItem={handleRemoveItem}
-                onCheckout={handleCheckout}
+  return (
+    <div className="min-h-screen bg-[#05070a] text-slate-100 flex overflow-hidden">
+      {/* Sidebar Navigation - Desktop */}
+      <motion.aside 
+        initial={false}
+        animate={{ width: isSidebarOpen ? 260 : 80 }}
+        className="hidden lg:flex flex-col glass-card border-r border-cyan-500/10 h-screen sticky top-0 z-50 bg-[#080b14]/80 backdrop-blur-2xl transition-all duration-300"
+      >
+        <div className="p-6 flex items-center justify-between">
+          <AnimatePresence mode="wait">
+            {isSidebarOpen && (
+              <motion.img 
+                key="logo"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                src={toodiesLogo} 
+                alt="Toodies" 
+                className="h-8 w-auto" 
               />
-              <Button 
-                variant="outline" 
-                onClick={handleLogout}
-                className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20"
+            )}
+          </AnimatePresence>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="text-slate-500 hover:text-cyan-400"
+          >
+            {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </Button>
+        </div>
+
+        <nav className="flex-1 px-4 py-4 space-y-2">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${
+                activeTab === item.id 
+                  ? 'bg-gradient-to-r from-cyan-500/20 to-teal-500/10 text-cyan-400 border border-cyan-500/20' 
+                  : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
+              }`}
+            >
+              <item.icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${activeTab === item.id ? 'text-cyan-400' : ''}`} />
+              <AnimatePresence>
+                {isSidebarOpen && (
+                  <motion.span 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="font-bold text-sm tracking-wide"
+                  >
+                    {item.label}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+              {item.id === 'orders' && currentUser.orders.length > 0 && isSidebarOpen && (
+                <Badge className="ml-auto bg-cyan-500/20 text-cyan-400 border-0 h-5 px-1.5 text-[10px]">
+                  {currentUser.orders.length}
+                </Badge>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-4 mt-auto border-t border-white/5">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition-all group"
+          >
+            <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+            {isSidebarOpen && <span className="font-bold text-sm">Logout</span>}
+          </button>
+        </div>
+      </motion.aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col min-w-0 bg-[#05070a] relative">
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/5 rounded-full blur-[120px]" />
+          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-teal-500/5 rounded-full blur-[120px]" />
+        </div>
+
+        {/* Top Header */}
+        <header className="h-20 glass-card border-b border-white/5 sticky top-0 z-40 px-6 flex items-center justify-between gap-4 bg-[#05070a]/40 backdrop-blur-xl">
+          <div className="flex-1 max-w-2xl relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Input 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search premium collections..." 
+              className="bg-white/5 border-white/10 h-11 pl-12 rounded-xl focus:border-cyan-500/50 focus:ring-cyan-500/10 w-full"
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <ShoppingCart
+              cart={cart}
+              products={products}
+              onUpdateQuantity={handleUpdateQuantity}
+              onRemoveItem={handleRemoveItem}
+              onCheckout={handleCheckout}
+            />
+            
+            {/* Notification Bell */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsHelpCenterOpen(true)}
+              className="relative h-10 w-10 rounded-xl bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/30 transition-all"
+            >
+              <Bell className="w-5 h-5 text-slate-400 hover:text-cyan-400 transition-colors" />
+              {notificationCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-[#05070a] animate-bounce">
+                  {notificationCount}
+                </span>
+              )}
+            </Button>
+            
+            <div className="w-px h-8 bg-white/10 mx-2" />
+            
+            <div className="flex items-center gap-3 pl-2">
+              <div className="hidden sm:flex flex-col items-end">
+                <p className="text-xs font-bold text-white leading-none mb-1">{currentUser.name || 'Member'}</p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-tighter">Gold Member</p>
+              </div>
+              <div 
+                className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform border border-white/10"
+                onClick={() => setActiveTab('profile')}
               >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
+                <UserIcon className="w-5 h-5 text-white" />
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-8 relative z-10">
-        {/* Welcome Section */}
-        <motion.div 
-          className="mb-8"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <h2 className="text-3xl font-bold text-cyan-100 glow-text mb-2">
-            Welcome back!
-          </h2>
-          <p className="text-slate-400">{currentUser.email}</p>
-        </motion.div>
-
-        <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-6 bg-[#0f172a]/50 border border-cyan-500/20">
-            <TabsTrigger 
-              value="shop"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-500 data-[state=active]:text-white text-slate-300"
+        {/* Page Content */}
+        <div className="flex-1 overflow-y-auto p-6 lg:p-10 custom-scrollbar relative z-10">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
             >
-              <Store className="w-4 h-4 mr-2" />
-              Shop
-            </TabsTrigger>
-            <TabsTrigger 
-              value="orders"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-500 data-[state=active]:text-white text-slate-300"
-            >
-              <Package className="w-4 h-4 mr-2" />
-              Track Orders
-            </TabsTrigger>
-          </TabsList>
+              {activeTab === 'shop' && (
+                <div className="space-y-10">
+                  {/* Hero Callout */}
+                  <Card className="glass-card border-cyan-500/30 overflow-hidden relative rounded-3xl group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-transparent to-teal-500/20 group-hover:opacity-100 transition-opacity" />
+                    <CardContent className="p-8 lg:p-12 relative z-10">
+                      <div className="flex flex-col lg:flex-row items-center justify-between gap-10">
+                        <div className="flex-1 space-y-6">
+                          <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30 px-3 py-1 text-[10px] uppercase tracking-widest font-bold">
+                            Advanced Technology
+                          </Badge>
+                          <h2 className="text-4xl lg:text-5xl font-black text-white leading-tight">
+                            Create Your <br />
+                            <span className="bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">2D Masterpiece</span>
+                          </h2>
+                          <p className="text-slate-400 text-lg max-w-xl">
+                            Design custom products with our integrated 2D studio. Upload your images, choose colors, and bring your vision to life.
+                          </p>
+                          <div className="pt-2">
+                            <Button
+                              onClick={onOpen2DStudio || handleDesignerClick}
+                              className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-white glow-button h-14 px-8 text-lg rounded-2xl border-0"
+                            >
+                              <Palette className="w-5 h-5 mr-3" />
+                              Launch 2D Studio
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="relative hidden xl:block">
+                          <div className="w-64 h-64 bg-cyan-500/20 rounded-full blur-[60px] animate-pulse absolute inset-0 m-auto" />
+                          <motion.div 
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                            className="relative z-10 p-8 rounded-full border-2 border-dashed border-cyan-500/20"
+                          >
+                            <Palette className="w-32 h-32 text-cyan-500/40" />
+                          </motion.div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-          <TabsContent value="shop" className="space-y-6">
-            {/* 3D Designer Call-to-Action */}
-            <Card className="glass-card border-cyan-500/30 overflow-hidden relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-teal-500/10" />
-              <CardContent className="p-6 relative z-10">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <motion.div 
-                      className="bg-gradient-to-br from-cyan-500/30 to-teal-500/30 p-3 rounded-xl glow-border"
-                      whileHover={{ rotate: 360 }}
-                      transition={{ duration: 0.6 }}
-                    >
-                      <Palette className="w-8 h-8 text-cyan-400" />
-                    </motion.div>
+                  {/* Collections Header */}
+                  <div className="flex flex-col md:flex-row gap-6 items-end justify-between border-b border-white/5 pb-8">
                     <div>
-                      <h3 className="text-xl font-bold text-cyan-100 mb-1">Design Your Custom Product</h3>
-                      <p className="text-slate-300">Use our 3D designer to create unique designs</p>
+                      <h3 className="text-2xl font-bold text-white mb-2">Explore Collections</h3>
+                      <p className="text-slate-500 text-sm">Discover premium basics ready for your vision</p>
+                    </div>
+                    
+                    <div className="flex gap-4 w-full md:w-auto">
+                      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                        <SelectTrigger className="bg-white/5 border-white/10 text-slate-300 h-11 w-40 rounded-xl">
+                          <SelectValue placeholder="Category" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#0f172a] border-white/10 text-slate-200">
+                          <SelectItem value="all">All Styles</SelectItem>
+                          {categories.map(category => (
+                            <SelectItem key={category} value={category}>{category}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Select value={selectedGender} onValueChange={setSelectedGender}>
+                        <SelectTrigger className="bg-white/5 border-white/10 text-slate-300 h-11 w-32 rounded-xl">
+                          <SelectValue placeholder="Gender" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#0f172a] border-white/10 text-slate-200">
+                          <SelectItem value="all">Unisex</SelectItem>
+                          <SelectItem value="men">Men</SelectItem>
+                          <SelectItem value="women">Women</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                  <Button
-                    onClick={handleDesignerClick}
-                    className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-white glow-button border-0"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Open 3D Designer
-                  </Button>
+
+                  {/* Products Grid */}
+                  {filteredProducts.length === 0 ? (
+                    <div className="text-center py-32 bg-white/5 rounded-[40px] border border-dashed border-white/10">
+                      <Search className="w-16 h-16 text-slate-700 mx-auto mb-6 opacity-50" />
+                      <h3 className="text-xl font-bold text-slate-400 mb-2">No matches found</h3>
+                      <p className="text-slate-600">Try adjusting your filters or search keywords</p>
+                      <Button 
+                        variant="link" 
+                        onClick={() => {
+                          setSearchQuery('');
+                          setSelectedCategory('all');
+                          setSelectedGender('all');
+                        }}
+                        className="text-cyan-400 mt-4"
+                      >
+                        Reset All Filters
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8">
+                      {filteredProducts.map((product, index) => (
+                        <motion.div
+                          key={product.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: index % 4 * 0.1 }}
+                        >
+                          <ProductCard
+                            product={product}
+                            onAddToCart={handleAddToCartQuick}
+                            onOpenDesigner={(p) => {
+                              setSelected3DProduct(p);
+                              setIs3DDesignerOpen(true);
+                            }}
+                          />
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="mt-4 pt-4 border-t border-cyan-500/20">
-                  <Input
-                    placeholder="Or paste your 3D designer URL here..."
-                    value={designerUrl}
-                    onChange={(e) => setDesignerUrl(e.target.value)}
-                    className="bg-[#0f172a]/50 border-cyan-500/30 text-cyan-100 placeholder:text-slate-500"
-                  />
+              )}
+
+              {activeTab === 'designs' && (
+                <div className="space-y-8">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+                      <Palette className="w-6 h-6 text-cyan-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-bold text-white">Your Design Studio</h2>
+                      <p className="text-slate-500">View and purchase your custom creations</p>
+                    </div>
+                  </div>
+                  <StudioMyCustomDesigns />
                 </div>
-              </CardContent>
-            </Card>
+              )}
 
-            {/* Filters & Search */}
-            <div className="space-y-4">
-              <Input
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="max-w-md bg-[#0f172a]/50 border-cyan-500/30 text-cyan-100 placeholder:text-slate-500"
-              />
-              
-              <div className="flex flex-wrap gap-4">
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-48 bg-[#0f172a]/50 border-cyan-500/30 text-cyan-100">
-                    <SelectValue placeholder="All Categories" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#0f172a] border-cyan-500/30">
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map(category => (
-                      <SelectItem key={category} value={category}>{category}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {activeTab === 'orders' && (
+                <div className="space-y-8">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+                      <Package className="w-6 h-6 text-cyan-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-bold text-white">Order Tracking</h2>
+                      <p className="text-slate-500">Real-time status of your premium apparel</p>
+                    </div>
+                  </div>
+                  <OrderTracking user={currentUser} />
+                </div>
+              )}
 
-                <Select value={selectedGender} onValueChange={setSelectedGender}>
-                  <SelectTrigger className="w-48 bg-[#0f172a]/50 border-cyan-500/30 text-cyan-100">
-                    <SelectValue placeholder="All Genders" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#0f172a] border-cyan-500/30">
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="men">Men</SelectItem>
-                    <SelectItem value="women">Women</SelectItem>
-                    <SelectItem value="unisex">Unisex</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+              {activeTab === 'profile' && (
+                <div className="space-y-8">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+                      <UserIcon className="w-6 h-6 text-cyan-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-bold text-white">Account Settings</h2>
+                      <p className="text-slate-500">Manage your profile and security</p>
+                    </div>
+                  </div>
+                  <CustomerProfile user={currentUser} onUpdate={(updatedUser) => setCurrentUser(updatedUser)} />
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
 
-            {/* Products Grid */}
-            {filteredProducts.length === 0 ? (
-              <div className="text-center py-12">
-                <Package className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                <p className="text-slate-400">No products found</p>
-              </div>
-            ) : (
-              <motion.div 
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ staggerChildren: 0.1 }}
-              >
-                {filteredProducts.map(product => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    onAddToCart={handleAddToCartQuick}
-                  />
-                ))}
-              </motion.div>
-            )}
-          </TabsContent>
+        {/* Mobile Navigation - Bottom Bar */}
+        <nav className="lg:hidden h-20 glass-card border-t border-white/5 sticky bottom-0 z-50 px-6 flex items-center justify-around bg-[#080b14]/90 backdrop-blur-xl">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`flex flex-col items-center gap-1 transition-all ${
+                activeTab === item.id ? 'text-cyan-400' : 'text-slate-500'
+              }`}
+            >
+              <item.icon className="w-6 h-6" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">{item.label}</span>
+              {activeTab === item.id && (
+                <motion.div 
+                  layoutId="mobileNavLine"
+                  className="w-8 h-1 bg-cyan-500 rounded-full mt-1"
+                />
+              )}
+            </button>
+          ))}
+        </nav>
+      </main>
 
-          <TabsContent value="orders">
-            <OrderTracking user={currentUser} />
-          </TabsContent>
-        </Tabs>
-      </div>
-
-      {/* Product Detail Modal */}
+      {/* Overlays & Modals */}
       <ProductDetailModal
         product={selectedProduct}
         isOpen={isModalOpen}
@@ -376,6 +734,107 @@ export function CustomerDashboard({ user, onLogout }: CustomerDashboardProps) {
         }}
         onAddToCart={handleAddToCart}
       />
+
+      <PaymentDialog
+        isOpen={isPaymentDialogOpen}
+        onClose={() => setIsPaymentDialogOpen(false)}
+        total={checkoutTotal}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
+
+      <CheckoutDialog
+        isOpen={isCheckoutDialogOpen}
+        onClose={() => setIsCheckoutDialogOpen(false)}
+        cart={cart}
+        products={products}
+        total={checkoutTotal}
+        discount={checkoutDiscount}
+        couponCode={checkoutCouponCode}
+        shippingAddress={shippingAddress}
+        customDesignUrl={customDesignUrl}
+        onProceedToPayment={handleProceedToPayment}
+      />
+
+      <PopupDisplay 
+        user={currentUser} 
+        onVerifyClick={() => setActiveTab('profile')}
+      />
+
+      {/* Help Center Overlay */}
+      <AnimatePresence>
+        {isHelpCenterOpen && (
+          <HelpCenter
+            user={currentUser}
+            onClose={() => setIsHelpCenterOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Help Center Floating Button */}
+      {!isHelpCenterOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            transform: `translate(${helpButtonPosition.x}px, ${helpButtonPosition.y}px)`,
+            zIndex: 50,
+          }}
+          className="lg:bottom-8 lg:right-8"
+        >
+          <Button
+            onClick={handleHelpButtonClick}
+            onMouseDown={handleHelpButtonMouseDown}
+            className={`w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-teal-600 hover:from-cyan-400 hover:to-teal-500 text-white glow-button border-0 shadow-2xl relative group overflow-hidden transition-all active:scale-95 ${isHelpButtonDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+          >
+            <div className="absolute inset-0 bg-white/20 translate-y-16 group-hover:translate-y-0 transition-transform duration-300" />
+            <HeadphonesIcon className="w-8 h-8 relative z-10 pointer-events-none" />
+            {notificationCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white text-[10px] font-black flex items-center justify-center rounded-full border-2 border-[#05070a] animate-bounce shadow-lg pointer-events-none">
+                {notificationCount}
+              </span>
+            )}
+          </Button>
+        </div>
+      )}
+
+      {/* WhatsApp Floating Button */}
+      {(() => {
+        const businessInfo = storageUtils.getBusinessInfo();
+        if (businessInfo.visibility?.website.showWhatsApp === false) return null;
+        
+        const whatsappNumber = businessInfo.whatsapp || '+919876543210';
+        const cleanNumber = whatsappNumber.replace(/[^0-9]/g, '');
+        const message = encodeURIComponent(`Hi! I'm interested in learning more about Toodies products.`);
+        const whatsappUrl = `https://wa.me/${cleanNumber}?text=${message}`;
+
+        return (
+          <motion.div
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
+            style={{
+              position: 'fixed',
+              bottom: '24px',
+              right: '104px',
+              zIndex: 50,
+            }}
+            className="lg:bottom-8 lg:right-28"
+          >
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 text-white shadow-2xl relative group overflow-hidden transition-all hover:scale-110 active:scale-95"
+            >
+              <div className="absolute inset-0 bg-white/20 translate-y-16 group-hover:translate-y-0 transition-transform duration-300" />
+              <MessageCircle className="w-8 h-8 relative z-10 pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping pointer-events-none" />
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full pointer-events-none" />
+            </a>
+          </motion.div>
+        );
+      })()}
     </div>
   );
 }

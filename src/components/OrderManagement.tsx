@@ -5,26 +5,57 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Package, Truck, MapPin, Send, CheckCircle, Clock, Phone, Mail } from 'lucide-react';
+import { 
+  Package, 
+  Truck, 
+  MapPin, 
+  Send, 
+  CheckCircle, 
+  Clock, 
+  Phone, 
+  Mail, 
+  Palette, 
+  ExternalLink, 
+  Layout, 
+  Camera,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  FileText,
+  Download
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { storageUtils } from '../utils/storage';
 import { notificationService } from '../utils/notifications';
-import { Order } from '../types';
+import { Order, Product, Invoice } from '../types';
 import { toast } from 'sonner@2.0.3';
+import { InvoiceEditor } from './InvoiceEditor';
+import { downloadInvoiceAsPDF } from './InvoicePreview';
+import { invoiceUtils } from '../utils/invoiceGenerator';
+import { downloadDesignSheetAsPDF, DesignSheetData } from './DesignSheetPreview';
 
 export function OrderManagement() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [trackingNumber, setTrackingNumber] = useState('');
   const [trackingUrl, setTrackingUrl] = useState('');
+  const [isInvoiceEditorOpen, setIsInvoiceEditorOpen] = useState(false);
+  const [editingOrderForInvoice, setEditingOrderForInvoice] = useState<Order | null>(null);
 
   useEffect(() => {
     loadOrders();
+    loadProducts();
   }, []);
 
   const loadOrders = () => {
     const allOrders = storageUtils.getOrders();
     setOrders(allOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+  };
+
+  const loadProducts = () => {
+    setProducts(storageUtils.getProducts());
   };
 
   const handleUpdateTracking = (order: Order) => {
@@ -75,173 +106,436 @@ export function OrderManagement() {
     }
   };
 
+  const toggleOrderDetails = (orderId: string) => {
+    setExpandedOrder(expandedOrder === orderId ? null : orderId);
+  };
+
+  const getProductName = (productId: string) => {
+    return products.find(p => p.id === productId)?.name || 'Unknown Product';
+  };
+
+  const handleOpenInvoiceEditor = (order: Order) => {
+    setEditingOrderForInvoice(order);
+    setIsInvoiceEditorOpen(true);
+  };
+
+  const handleSaveInvoice = (invoice: Invoice) => {
+    if (!editingOrderForInvoice) return;
+    
+    const orders = storageUtils.getOrders();
+    const orderIndex = orders.findIndex(o => o.id === editingOrderForInvoice.id);
+    if (orderIndex !== -1) {
+      orders[orderIndex].invoice = invoice;
+      storageUtils.saveOrders(orders);
+      loadOrders();
+      toast.success('Invoice saved successfully!');
+    }
+    setIsInvoiceEditorOpen(false);
+  };
+
+  const handleDownloadInvoice = (invoice: Invoice) => {
+    downloadInvoiceAsPDF(invoice);
+    toast.success('Downloading invoice...');
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="bg-gradient-to-br from-cyan-500/20 to-teal-500/20 p-3 rounded-xl glow-border">
-          <Package className="w-6 h-6 text-cyan-400" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="bg-gradient-to-br from-cyan-500/20 to-teal-500/20 p-3 rounded-xl glow-border">
+            <Package className="w-6 h-6 text-cyan-400" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-cyan-100">Order Management</h2>
+            <p className="text-slate-400">Review and process customer orders</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-2xl font-bold text-cyan-100">Order Management</h2>
-          <p className="text-slate-400">Manage and track customer orders</p>
+        <div className="bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 rounded-xl text-xs font-bold text-cyan-400 uppercase tracking-widest flex items-center gap-2">
+          <Layout className="w-3 h-3" />
+          {orders.length} Total Orders
         </div>
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid gap-6">
         {orders.length === 0 ? (
-          <Card className="glass-card border-cyan-500/20">
-            <CardContent className="pt-6">
-              <p className="text-center text-slate-400">No orders yet</p>
+          <Card className="glass-card border-cyan-500/20 py-12">
+            <CardContent className="flex flex-col items-center justify-center text-center">
+              <Package className="w-12 h-12 text-slate-700 mb-4" />
+              <p className="text-slate-400">No customer orders found</p>
             </CardContent>
           </Card>
         ) : (
-          orders.map((order) => (
-            <motion.div
-              key={order.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              layout
-            >
-              <Card className="glass-card glass-card-hover border-cyan-500/20">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-cyan-100 flex items-center gap-2 mb-2">
-                        <Package className="w-5 h-5 text-cyan-400" />
-                        Order #{order.id.slice(0, 8)}
-                      </CardTitle>
-                      <div className="space-y-1 text-sm text-slate-300">
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-4 h-4 text-cyan-500" />
-                          {order.userEmail}
+          orders.map((order) => {
+            const hasCustomDesign = order.items.some(item => !!item.customDesignUrl);
+            
+            return (
+              <motion.div
+                key={order.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                layout
+              >
+                <Card className={`glass-card border-2 transition-all duration-300 ${
+                  expandedOrder === order.id ? 'border-cyan-500/40 shadow-[0_0_30px_rgba(6,182,212,0.1)]' : 'border-cyan-500/20'
+                }`}>
+                  <CardHeader className="cursor-pointer" onClick={() => toggleOrderDetails(order.id)}>
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <CardTitle className="text-cyan-100 flex items-center gap-2">
+                            Order #{order.id.slice(-8).toUpperCase()}
+                          </CardTitle>
+                          {hasCustomDesign && (
+                            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 animate-pulse">
+                              <Palette className="w-3 h-3 mr-1" />
+                              3D Design
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 text-xs text-slate-400">
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-3 h-3 text-cyan-500" />
+                            {order.userEmail}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-3 h-3 text-teal-500" />
+                            {order.userMobile}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-3 h-3" />
+                            {new Date(order.date).toLocaleDateString()} at {new Date(order.date).toLocaleTimeString()}
+                          </div>
+                          <div className="flex items-center gap-2 font-bold text-slate-300">
+                            <MapPin className="w-3 h-3" />
+                            {order.shippingAddress ? `${order.shippingAddress.substring(0, 30)}...` : 'No address'}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
+                          ₹{order.total.toLocaleString('en-IN')}
                         </div>
                         <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-teal-500" />
-                          {order.userMobile}
+                          <Badge className={`${getStatusColor(order.status)} border shadow-sm`}>
+                            {getStatusIcon(order.status)}
+                            <span className="ml-1.5 capitalize font-bold">{order.status}</span>
+                          </Badge>
+                          {expandedOrder === order.id ? <ChevronUp className="w-5 h-5 text-slate-500" /> : <ChevronDown className="w-5 h-5 text-slate-500" />}
                         </div>
-                        <div className="flex items-center gap-2 text-slate-400">
-                          <Clock className="w-4 h-4" />
-                          {new Date(order.date).toLocaleDateString()} at {new Date(order.date).toLocaleTimeString()}
-                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
-                        ${order.total.toFixed(2)}
-                      </div>
-                      <Badge className={`mt-2 ${getStatusColor(order.status)}`}>
-                        {getStatusIcon(order.status)}
-                        <span className="ml-1 capitalize">{order.status}</span>
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {order.trackingNumber && (
-                    <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <MapPin className="w-5 h-5 text-cyan-400" />
-                        <span className="font-semibold text-cyan-100">Tracking Information</span>
-                      </div>
-                      <p className="text-lg text-cyan-300 font-mono">{order.trackingNumber}</p>
-                      {order.trackingUrl && (
-                        <a 
-                          href={order.trackingUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-teal-400 hover:text-teal-300 text-sm underline mt-1 inline-block"
-                        >
-                          View Tracking Details →
-                        </a>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex flex-wrap gap-3">
-                    <div className="flex-1 min-w-[200px]">
-                      <Label className="text-cyan-100 mb-2 block">Update Status</Label>
-                      <Select
-                        value={order.status}
-                        onValueChange={(value) => handleUpdateStatus(order.id, value)}
-                      >
-                        <SelectTrigger className="bg-[#0f172a]/50 border-cyan-500/30 text-cyan-100">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#0f172a] border-cyan-500/30">
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="processing">Processing</SelectItem>
-                          <SelectItem value="shipped">Shipped</SelectItem>
-                          <SelectItem value="delivered">Delivered</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <Button
-                      onClick={() => setSelectedOrder(selectedOrder?.id === order.id ? null : order)}
-                      variant="outline"
-                      className="border-teal-500/30 text-teal-400 hover:bg-teal-500/20"
-                    >
-                      <Truck className="w-4 h-4 mr-2" />
-                      {selectedOrder?.id === order.id ? 'Cancel' : 'Update Tracking'}
-                    </Button>
-                  </div>
+                  </CardHeader>
 
                   <AnimatePresence>
-                    {selectedOrder?.id === order.id && (
+                    {expandedOrder === order.id && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="space-y-3 overflow-hidden"
+                        className="overflow-hidden"
                       >
-                        <div className="bg-[#0f172a]/30 rounded-xl p-4 border border-cyan-500/20">
+                        <CardContent className="pt-0 space-y-6">
+                          <div className="h-px bg-cyan-500/10 mx-0 mb-6" />
+                          
+                          {/* Items List */}
                           <div className="space-y-3">
-                            <div>
-                              <Label htmlFor="tracking-number" className="text-cyan-100">
-                                Tracking Number *
-                              </Label>
-                              <Input
-                                id="tracking-number"
-                                value={trackingNumber}
-                                onChange={(e) => setTrackingNumber(e.target.value)}
-                                placeholder="e.g., 1Z999AA10123456784"
-                                className="bg-[#0f172a]/50 border-cyan-500/30 text-cyan-100 placeholder:text-slate-500"
-                              />
+                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Order Items</Label>
+                            <div className="grid gap-3">
+                              {order.items.map((item, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-[#0f172a]/40 border border-white/5 group hover:border-cyan-500/20 transition-all">
+                                  <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-500">
+                                      {idx + 1}
+                                    </div>
+                                    <div>
+                                      <p className="font-bold text-white text-sm">{getProductName(item.productId)}</p>
+                                      <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Qty: {item.quantity}</p>
+                                    </div>
+                                  </div>
+                                  
+                                  {item.customDesignUrl && (
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10 h-8 text-[10px] font-bold uppercase tracking-widest rounded-lg px-3"
+                                        onClick={() => window.open(item.customDesignUrl, '_blank')}
+                                      >
+                                        <ExternalLink className="w-3 h-3 mr-2" />
+                                        Visit Design
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10 h-8 text-[10px] font-bold uppercase tracking-widest rounded-lg px-3"
+                                        onClick={() => {
+                                          const product = products.find(p => p.id === item.productId);
+                                          const variation = product?.variations.find(v => v.id === item.variationId);
+                                          const settings = storageUtils.getAdminSettings();
+                                          
+                                          const data: DesignSheetData = {
+                                            orderId: order.id,
+                                            orderDate: order.date,
+                                            customerName: order.userEmail.split('@')[0], // Fallback if name not in order
+                                            customerPhone: order.userMobile,
+                                            customerEmail: order.userEmail,
+                                            shippingAddress: order.shippingAddress || 'Address not provided',
+                                            item: item,
+                                            productName: product?.name || 'Unknown Product',
+                                            variationName: `${variation?.color || ''} - ${variation?.size || ''}`,
+                                            companyName: 'Toodies',
+                                            companyContact: settings.whatsappNumber || '+91-9886510858'
+                                          };
+                                          downloadDesignSheetAsPDF(data);
+                                          toast.success('Generating production design sheet...');
+                                        }}
+                                      >
+                                        <Download className="w-3 h-3 mr-2" />
+                                        PDF Sheet
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10 h-8 rounded-lg px-3"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(item.customDesignUrl!);
+                                          toast.success('Design URL copied to clipboard!', {
+                                            description: 'You can now share this URL for manufacturing reference.'
+                                          });
+                                        }}
+                                        title="Copy Design URL"
+                                      >
+                                        <Copy className="w-3 h-3" />
+                                      </Button>
+                                      <div className="p-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 group-hover:animate-bounce" title="Capture Screenshot Required">
+                                        <Camera className="w-3 h-3 text-purple-400" />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
                             </div>
-                            <div>
-                              <Label htmlFor="tracking-url" className="text-cyan-100">
-                                Tracking URL (Optional)
-                              </Label>
-                              <Input
-                                id="tracking-url"
-                                value={trackingUrl}
-                                onChange={(e) => setTrackingUrl(e.target.value)}
-                                placeholder="https://tracking.example.com/..."
-                                className="bg-[#0f172a]/50 border-cyan-500/30 text-cyan-100 placeholder:text-slate-500"
-                              />
-                            </div>
-                            <Button
-                              onClick={() => handleUpdateTracking(order)}
-                              className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-white glow-button border-0"
-                            >
-                              <Send className="w-4 h-4 mr-2" />
-                              Update & Send Notifications
-                            </Button>
                           </div>
-                        </div>
+
+                          {/* 3D Design Callout for Admin */}
+                          {hasCustomDesign && (
+                            <>
+                              <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-2xl p-4 flex items-start gap-4">
+                                <div className="bg-purple-500/20 p-2.5 rounded-xl">
+                                  <Palette className="w-5 h-5 text-purple-400" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-sm font-bold text-purple-100 mb-1">Production Required: 3D Designs Detected</p>
+                                  <p className="text-xs text-slate-400 leading-relaxed mb-3">
+                                    This order contains custom user designs. Click "Visit Design" above to view the product from all angles or "PDF Sheet" to download the production reference document.
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    <Button
+                                      size="sm"
+                                      className="bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold uppercase h-8"
+                                      onClick={() => {
+                                        const customItems = order.items.filter(i => i.customDesignUrl);
+                                        customItems.forEach((item, index) => {
+                                          setTimeout(() => {
+                                            const product = products.find(p => p.id === item.productId);
+                                            const variation = product?.variations.find(v => v.id === item.variationId);
+                                            const settings = storageUtils.getAdminSettings();
+                                            
+                                            const data: DesignSheetData = {
+                                              orderId: order.id,
+                                              orderDate: order.date,
+                                              customerName: order.userEmail.split('@')[0],
+                                              customerPhone: order.userMobile,
+                                              customerEmail: order.userEmail,
+                                              shippingAddress: order.shippingAddress || 'Address not provided',
+                                              item: item,
+                                              productName: product?.name || 'Unknown Product',
+                                              variationName: `${variation?.color || ''} - ${variation?.size || ''}`,
+                                              companyName: 'Toodies',
+                                              companyContact: settings.whatsappNumber || '+91-9886510858'
+                                            };
+                                            downloadDesignSheetAsPDF(data);
+                                          }, index * 1000); // Stagger downloads to prevent browser blocking
+                                        });
+                                        toast.success(`Downloading ${customItems.length} design sheets...`);
+                                      }}
+                                    >
+                                      <Download className="w-3 h-3 mr-2" />
+                                      Download All Sheets
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Complete Design URLs for Manufacturing */}
+                              <div className="space-y-3">
+                                <Label className="text-xs font-bold text-purple-500 uppercase tracking-widest flex items-center gap-2">
+                                  <Palette className="w-3 h-3" />
+                                  Permanent Design URLs (For WooCommerce Integration)
+                                </Label>
+                                <div className="grid gap-2">
+                                  {order.items.filter(item => item.customDesignUrl).map((item, idx) => (
+                                    <div key={idx} className="p-3 rounded-xl bg-purple-500/5 border border-purple-500/20">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <p className="text-xs font-bold text-purple-300">
+                                          {getProductName(item.productId)} (Qty: {item.quantity})
+                                        </p>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-7 text-xs text-purple-400 hover:text-purple-300"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(item.customDesignUrl!);
+                                            toast.success('Copied!');
+                                          }}
+                                        >
+                                          <Copy className="w-3 h-3 mr-1" />
+                                          Copy URL
+                                        </Button>
+                                      </div>
+                                      <p className="text-[10px] text-purple-300/70 font-mono break-all bg-black/20 p-2 rounded border border-purple-500/10">
+                                        {item.customDesignUrl}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          {/* Address Info */}
+                          <div className="space-y-3">
+                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Shipping Destination</Label>
+                            <div className="p-4 rounded-xl bg-cyan-500/5 border border-cyan-500/10 text-slate-300 text-sm leading-relaxed">
+                              {order.shippingAddress || 'No shipping address provided.'}
+                            </div>
+                          </div>
+
+                          {/* Admin Controls */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-white/5">
+                            <div className="space-y-3">
+                              <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Execution Status</Label>
+                              <Select
+                                value={order.status}
+                                onValueChange={(value) => handleUpdateStatus(order.id, value)}
+                              >
+                                <SelectTrigger className="bg-[#0f172a]/50 border-cyan-500/30 text-cyan-100 h-11 rounded-xl">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-[#0f172a] border-cyan-500/30 text-slate-200">
+                                  <SelectItem value="pending">Pending</SelectItem>
+                                  <SelectItem value="processing">Processing</SelectItem>
+                                  <SelectItem value="shipped">Shipped</SelectItem>
+                                  <SelectItem value="delivered">Delivered</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="flex items-end">
+                              <Button
+                                onClick={() => setSelectedOrder(selectedOrder?.id === order.id ? null : order)}
+                                variant="outline"
+                                className={`w-full h-11 rounded-xl transition-all ${
+                                  selectedOrder?.id === order.id 
+                                    ? 'bg-red-500/10 border-red-500/30 text-red-400' 
+                                    : 'border-teal-500/30 text-teal-400 hover:bg-teal-500/10'
+                                }`}
+                              >
+                                <Truck className="w-4 h-4 mr-2" />
+                                {selectedOrder?.id === order.id ? 'Close Tracking Panel' : 'Manage Logistics'}
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Tracking Update Panel */}
+                          <AnimatePresence>
+                            {selectedOrder?.id === order.id && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="space-y-4 bg-teal-500/5 rounded-2xl p-5 border border-teal-500/20"
+                              >
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-teal-400 uppercase tracking-widest">Tracking ID *</Label>
+                                    <Input
+                                      value={trackingNumber}
+                                      onChange={(e) => setTrackingNumber(e.target.value)}
+                                      placeholder="e.g., SHIP123456789"
+                                      className="bg-[#0f172a]/80 border-teal-500/30 text-white placeholder:text-slate-600 h-10 rounded-lg"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-teal-400 uppercase tracking-widest">Tracking URL</Label>
+                                    <Input
+                                      value={trackingUrl}
+                                      onChange={(e) => setTrackingUrl(e.target.value)}
+                                      placeholder="https://track.it/..."
+                                      className="bg-[#0f172a]/80 border-teal-500/30 text-white placeholder:text-slate-600 h-10 rounded-lg"
+                                    />
+                                  </div>
+                                </div>
+                                <Button
+                                  onClick={() => handleUpdateTracking(order)}
+                                  className="w-full bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-white font-bold rounded-xl h-11"
+                                >
+                                  <Send className="w-4 h-4 mr-2" />
+                                  Dispatch & Notify Customer
+                                </Button>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+
+                          {/* Invoice Management */}
+                          <div className="space-y-3">
+                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Invoice Management</Label>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-teal-500/30 text-teal-400 hover:bg-teal-500/10 h-8 text-[10px] font-bold uppercase tracking-widest rounded-lg px-3"
+                                onClick={() => handleOpenInvoiceEditor(order)}
+                              >
+                                <FileText className="w-3 h-3 mr-2" />
+                                Edit Invoice
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-teal-500/30 text-teal-400 hover:bg-teal-500/10 h-8 rounded-lg px-3"
+                                onClick={() => {
+                                  const invoice = order.invoice || invoiceUtils.generateInvoiceFromOrder(order);
+                                  handleDownloadInvoice(invoice);
+                                }}
+                                title="Download Invoice"
+                              >
+                                <Download className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
                       </motion.div>
                     )}
                   </AnimatePresence>
-
-                  <div className="text-sm text-slate-400">
-                    <strong className="text-slate-300">Items:</strong> {order.items.length} product(s)
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))
+                </Card>
+              </motion.div>
+            );
+          })
         )}
       </div>
+
+      {/* Invoice Editor Modal */}
+      {isInvoiceEditorOpen && editingOrderForInvoice && (
+        <InvoiceEditor
+          order={editingOrderForInvoice}
+          isOpen={isInvoiceEditorOpen}
+          onSave={handleSaveInvoice}
+          onDownload={handleDownloadInvoice}
+          onClose={() => setIsInvoiceEditorOpen(false)}
+        />
+      )}
     </div>
   );
 }
