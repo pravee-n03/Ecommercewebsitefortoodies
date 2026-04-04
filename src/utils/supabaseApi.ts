@@ -1,6 +1,10 @@
 // Supabase API utilities - PRIMARY DATA SOURCE for production
 import { createClient } from '@supabase/supabase-js';
-import { projectId, publicAnonKey } from './supabase/info';
+
+// Use environment variables for Netlify deployment, with fallback to hardcoded values for development
+const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'mvehfbmjtycgnzahffod';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || `https://${projectId}.supabase.co`;
+const publicAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12ZWhmYm1qdHljZ256YWhmZm9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzU5ODcsImV4cCI6MjA4OTg1MTk4N30.Fp3LjhbJFyj4hKzekoHe3dmXzxfrOtZKni9e2i0XYQk';
 
 declare global {
   var __supabaseClient: any;
@@ -29,7 +33,7 @@ const getSupabaseClient = () => {
   if (!globalThis.__supabaseClientInitialized) {
     try {
       const client = createClient(
-        `https://${projectId}.supabase.co`,
+        supabaseUrl,
         publicAnonKey,
         {
           auth: {
