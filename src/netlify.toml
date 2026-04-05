@@ -1,28 +1,26 @@
 # Netlify Configuration for Toodies E-commerce Platform
-# Optimized for React + Vite + Supabase
+# Optimized for React + Vite 6 + Supabase
 
 [build]
-  # Build command - runs when deploying
-  command = "npm run build"
-  
-  # Directory containing the built site
-  publish = "dist"
-  
-  # Node.js version
-  [build.environment]
-    NODE_VERSION = "20"
-    NODE_ENV = "production"
-    CI = "false"
-    SKIP_PREFLIGHT_CHECK = "true"
+  command   = "npm run build"
+  # !! Must match vite.config.ts build.outDir !!
+  publish   = "dist"
 
-# Single Page Application (SPA) routing
-# Redirects all routes to index.html for client-side routing
+  [build.environment]
+    NODE_VERSION           = "20"
+    NODE_ENV               = "production"
+    # Prevent Netlify treating warnings as hard errors
+    CI                     = "false"
+    SKIP_PREFLIGHT_CHECK   = "true"
+
+# ─── Single Page Application routing ───────────────────────────────────────
+# All routes must resolve to index.html so React Router handles navigation.
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from   = "/*"
+  to     = "/index.html"
   status = 200
 
-# Cache static assets for better performance
+# ─── Cache: immutable hashed assets ────────────────────────────────────────
 [[headers]]
   for = "/assets/*"
   [headers.values]
@@ -38,7 +36,7 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# Cache images
+# ─── Cache: images ─────────────────────────────────────────────────────────
 [[headers]]
   for = "/*.jpg"
   [headers.values]
@@ -54,35 +52,35 @@
   [headers.values]
     Cache-Control = "public, max-age=604800"
 
-# Security headers
+# ─── Security headers ───────────────────────────────────────────────────────
 [[headers]]
   for = "/*"
   [headers.values]
-    X-Frame-Options = "DENY"
-    X-Content-Type-Options = "nosniff"
-    X-XSS-Protection = "1; mode=block"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    X-Frame-Options           = "DENY"
+    X-Content-Type-Options    = "nosniff"
+    X-XSS-Protection          = "1; mode=block"
+    Referrer-Policy           = "strict-origin-when-cross-origin"
+    Permissions-Policy        = "camera=(), microphone=(), geolocation=()"
 
-# CORS headers for API calls (if needed)
+# ─── CORS for Supabase API calls ────────────────────────────────────────────
 [[headers]]
   for = "/api/*"
   [headers.values]
-    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Origin  = "*"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
     Access-Control-Allow-Headers = "Content-Type, Authorization"
 
-# Build optimization
+# ─── Build processing ───────────────────────────────────────────────────────
 [build.processing]
   skip_processing = false
 
 [build.processing.css]
-  bundle = true
-  minify = true
+  bundle  = true
+  minify  = true
 
 [build.processing.js]
-  bundle = true
-  minify = true
+  bundle  = true
+  minify  = true
 
 [build.processing.html]
   pretty_urls = true
@@ -90,7 +88,7 @@
 [build.processing.images]
   compress = true
 
-# Context-specific settings
+# ─── Context overrides ──────────────────────────────────────────────────────
 [context.production]
   command = "npm run build"
 
@@ -100,10 +98,10 @@
 [context.branch-deploy]
   command = "npm run build"
 
-# Dev server settings (for Netlify Dev)
+# ─── Local dev via Netlify Dev ──────────────────────────────────────────────
 [dev]
-  command = "npm run dev"
-  port = 5173
-  targetPort = 5173
-  publish = "dist"
-  autoLaunch = false
+  command      = "npm run dev"
+  port         = 5173
+  targetPort   = 5173
+  publish      = "dist"
+  autoLaunch   = false
