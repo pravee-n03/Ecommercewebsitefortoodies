@@ -11,12 +11,32 @@
 
 ## ⚡ Quick Status
 
+🔴 **DATABASE SETUP REQUIRED** - [Fix in 2 minutes!](DATABASE_FIX_VISUAL_GUIDE.md)  
 ✅ **Production Ready** - All config files created  
 ✅ **Build Fixed** - Netlify deployment ready  
 ✅ **No Critical Errors** - [View Error Report](ERROR_CHECK_REPORT.md)  
 ✅ **Security Fixed** - Function injection prevention active  
 ✅ **App Works Offline** - localStorage fallback active  
-⚠️ **Action Required** - Deploy to Netlify now!
+
+---
+
+## 🚨 FIX DATABASE ERROR (2 MINUTES)
+
+**Current Error:**
+```
+❌ Database tables not found
+📋 Run: /database/fresh-setup-v2.sql in Supabase SQL Editor
+```
+
+**Quick Fix:**
+
+1. 🔗 **[Open Supabase SQL Editor](https://supabase.com/dashboard/project/mvehfbmjtycgnzahffod/sql/new)**
+2. 📄 **Copy** `/database/fresh-setup-v2.sql` (entire file)
+3. 📋 **Paste** into SQL Editor and click **"Run"**
+4. 🔄 **Refresh** your app (F5)
+5. ✅ **Fixed!**
+
+**📖 Detailed Guide:** [DATABASE_FIX_VISUAL_GUIDE.md](DATABASE_FIX_VISUAL_GUIDE.md)
 
 ---
 

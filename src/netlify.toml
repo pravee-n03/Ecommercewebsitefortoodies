@@ -10,7 +10,7 @@
   
   # Node.js version
   [build.environment]
-    NODE_VERSION = "18"
+    NODE_VERSION = "20"
     NODE_ENV = "production"
 
 # Single Page Application (SPA) routing
