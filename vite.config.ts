@@ -1,66 +1,85 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
 
-  import { defineConfig } from 'vite';
-  import react from '@vitejs/plugin-react';
-  import tailwindcss from '@tailwindcss/vite';
-  import path from 'path';
+// Custom plugin to handle figma:asset imports
+function figmaAssetPlugin() {
+  return {
+    name: 'figma-asset-plugin',
+    resolveId(id: string) {
+      if (id.startsWith('figma:asset/')) {
+        return id;
+      }
+    },
+    load(id: string) {
+      if (id.startsWith('figma:asset/')) {
+        const assetPath = id.replace('figma:asset/', '');
+        return `export default "/placeholder-${assetPath}"`;
+      }
+    }
+  };
+}
 
-  export default defineConfig({
-    plugins: [react(), tailwindcss()],
-    resolve: {
-      extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
-      alias: {
-        'vaul@1.1.2': 'vaul',
-        'sonner@2.0.3': 'sonner',
-        'recharts@2.15.2': 'recharts',
-        'react-resizable-panels@2.1.7': 'react-resizable-panels',
-        'react-hook-form@7.55.0': 'react-hook-form',
-        'react-day-picker@8.10.1': 'react-day-picker',
-        'next-themes@0.4.6': 'next-themes',
-        'lucide-react@0.487.0': 'lucide-react',
-        'input-otp@1.4.2': 'input-otp',
-        'figma:asset/d31f1d417f75594ba1ab67a4c64ef32e85ec2234.png': path.resolve(__dirname, './src/assets/d31f1d417f75594ba1ab67a4c64ef32e85ec2234.png'),
-        'figma:asset/c561690211cdd59869b2af6c111db0bf09f362da.png': path.resolve(__dirname, './src/assets/c561690211cdd59869b2af6c111db0bf09f362da.png'),
-        'figma:asset/404faa741eb4394d917a24330c1566de438eea2b.png': path.resolve(__dirname, './src/assets/404faa741eb4394d917a24330c1566de438eea2b.png'),
-        'figma:asset/0384d838979de15e8db05f2eef126aa9e88613fe.png': path.resolve(__dirname, './src/assets/0384d838979de15e8db05f2eef126aa9e88613fe.png'),
-        'embla-carousel-react@8.6.0': 'embla-carousel-react',
-        'cmdk@1.1.1': 'cmdk',
-        'class-variance-authority@0.7.1': 'class-variance-authority',
-        '@supabase/supabase-js@2': '@supabase/supabase-js',
-        '@radix-ui/react-tooltip@1.1.8': '@radix-ui/react-tooltip',
-        '@radix-ui/react-toggle@1.1.2': '@radix-ui/react-toggle',
-        '@radix-ui/react-toggle-group@1.1.2': '@radix-ui/react-toggle-group',
-        '@radix-ui/react-tabs@1.1.3': '@radix-ui/react-tabs',
-        '@radix-ui/react-switch@1.1.3': '@radix-ui/react-switch',
-        '@radix-ui/react-slot@1.1.2': '@radix-ui/react-slot',
-        '@radix-ui/react-slider@1.2.3': '@radix-ui/react-slider',
-        '@radix-ui/react-separator@1.1.2': '@radix-ui/react-separator',
-        '@radix-ui/react-scroll-area@1.2.3': '@radix-ui/react-scroll-area',
-        '@radix-ui/react-radio-group@1.2.3': '@radix-ui/react-radio-group',
-        '@radix-ui/react-progress@1.1.2': '@radix-ui/react-progress',
-        '@radix-ui/react-popover@1.1.6': '@radix-ui/react-popover',
-        '@radix-ui/react-navigation-menu@1.2.5': '@radix-ui/react-navigation-menu',
-        '@radix-ui/react-menubar@1.1.6': '@radix-ui/react-menubar',
-        '@radix-ui/react-label@2.1.2': '@radix-ui/react-label',
-        '@radix-ui/react-hover-card@1.1.6': '@radix-ui/react-hover-card',
-        '@radix-ui/react-dropdown-menu@2.1.6': '@radix-ui/react-dropdown-menu',
-        '@radix-ui/react-dialog@1.1.6': '@radix-ui/react-dialog',
-        '@radix-ui/react-context-menu@2.2.6': '@radix-ui/react-context-menu',
-        '@radix-ui/react-collapsible@1.1.3': '@radix-ui/react-collapsible',
-        '@radix-ui/react-checkbox@1.1.4': '@radix-ui/react-checkbox',
-        '@radix-ui/react-avatar@1.1.3': '@radix-ui/react-avatar',
-        '@radix-ui/react-aspect-ratio@1.1.2': '@radix-ui/react-aspect-ratio',
-        '@radix-ui/react-alert-dialog@1.1.6': '@radix-ui/react-alert-dialog',
-        '@radix-ui/react-accordion@1.2.3': '@radix-ui/react-accordion',
-        '@jsr/supabase__supabase-js@2.49.8': '@jsr/supabase__supabase-js',
-        '@': path.resolve(__dirname, './src'),
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react(), figmaAssetPlugin()],
+
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './'),
+      // ─── Figma Make uses versioned specifiers that don't exist as real npm
+      //     package names. Map each one to the actual installed package so
+      //     Vite (and Rollup) can resolve them during production builds. ───
+      'sonner@2.0.3': 'sonner',
+      'react-hook-form@7.55.0': 'react-hook-form',
+    }
+  },
+
+  build: {
+    // !! Must match netlify.toml publish directory !!
+    outDir: 'dist',
+    emptyOutDir: true,
+    sourcemap: false,
+    minify: 'esbuild',
+    target: 'es2020',
+    rollupOptions: {
+      output: {
+        // Let Rollup decide automatic chunking — avoids oversized bundles
+        manualChunks: undefined,
+      },
+      onwarn(warning, warn) {
+        // Silence noisy-but-harmless warnings
+        if (warning.code === 'UNUSED_EXTERNAL_IMPORT') return;
+        if (warning.code === 'MODULE_LEVEL_DIRECTIVE') return;
+        warn(warning);
       },
     },
-    build: {
-      target: 'esnext',
-      outDir: 'build',
-    },
-    server: {
-      port: 3000,
-      open: true,
-    },
-  });
+    chunkSizeWarningLimit: 3000,
+  },
+
+  server: {
+    port: 5173,
+    host: true,
+  },
+
+  preview: {
+    port: 4173,
+    host: true,
+  },
+
+  envPrefix: 'VITE_',
+
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      '@supabase/supabase-js',
+      'sonner',
+      'react-hook-form',
+    ],
+  },
+
+  esbuild: {
+    logOverride: { 'this-is-undefined-in-esm': 'silent' },
+  },
+});
