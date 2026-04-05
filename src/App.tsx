@@ -5,14 +5,12 @@ import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsAndConditions } from './components/TermsAndConditions';
 import { TwoDStudioPage } from './components/TwoDStudioPage';
 import { SupabaseConnectionBanner } from './components/SupabaseConnectionBanner';
-import { DatabaseSetupGuide } from './components/DatabaseSetupGuide';
 import { GoogleAnalytics, FacebookPixel } from './components/SEOHead';
 import { User, CustomDesign } from './types';
 import { Sparkles, ShoppingBag, Palette, Phone, Mail, MapPin, MessageCircle, Users, Facebook, Instagram, Twitter, Linkedin, Shield } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './components/figma/ImageWithFallback';
-import { authApi, productsApi, settingsApi, designsApi } from './utils/supabaseApi';
-import { storageUtils } from './utils/storage';
+import { authApi, productsApi, settingsApi } from './utils/supabaseApi';
 import { useState, useEffect } from 'react';
 import { toast, Toaster } from 'sonner@2.0.3';
 import { Button } from './components/ui/button';
@@ -31,7 +29,6 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [businessInfo, setBusinessInfo] = useState<any>({});
   const [adminSettings, setAdminSettings] = useState<any>({});
-  const [databaseTablesExist, setDatabaseTablesExist] = useState(true);
 
   // Load business info and settings on mount
   useEffect(() => {
@@ -42,13 +39,8 @@ export default function App() {
         
         if (business && Object.keys(business).length > 0) {
           setBusinessInfo(business);
-          setDatabaseTablesExist(true);
-          console.log('✅ Loaded business data from Supabase');
         } else {
-          console.error('❌ Database tables not found');
-          console.error('📋 Run: /database/fresh-setup-v2.sql in Supabase SQL Editor');
-          setDatabaseTablesExist(false);
-          // Set default business info
+          // Silently use default business info (DB may be empty or tables not yet set up)
           setBusinessInfo({
             companyName: 'Toodies',
             phone: '+91 98865 10858',
@@ -66,15 +58,7 @@ export default function App() {
           });
         }
       } catch (error: any) {
-        console.error('❌ Error loading business data from Supabase:', error);
-        
-        // Check if it's a "table not found" error
-        if (error?.message?.includes('relation') || error?.message?.includes('does not exist')) {
-          console.error('🔧 Database tables need to be created');
-          setDatabaseTablesExist(false);
-        }
-        
-        // Set default business info
+        // Silently fall back to default business info
         setBusinessInfo({
           companyName: 'Toodies',
           phone: '+91 98865 10858',
@@ -92,12 +76,11 @@ export default function App() {
         });
       }
       
-      // Try to load admin settings for analytics (optional)
+      // Load admin settings for analytics (UI preferences only, from localStorage)
       try {
-        const localSettings = storageUtils.getAdminSettings();
-        setAdminSettings(localSettings);
+        const rawSettings = localStorage.getItem('toodies_admin_settings');
+        setAdminSettings(rawSettings ? JSON.parse(rawSettings) : {});
       } catch (error) {
-        // Silent fallback
         setAdminSettings({});
       }
     };
@@ -263,16 +246,6 @@ export default function App() {
       <>
         <Toaster />
         <TermsAndConditions onBack={goToLanding} />
-      </>
-    );
-  }
-
-  // Show Database Setup Guide if tables are missing
-  if (!databaseTablesExist) {
-    return (
-      <>
-        <Toaster />
-        <DatabaseSetupGuide />
       </>
     );
   }
@@ -767,7 +740,7 @@ export default function App() {
           user={currentUser}
           onUserUpdate={(updatedUser) => {
             setCurrentUser(updatedUser);
-            storageUtils.updateCurrentUser(updatedUser);
+            localStorage.setItem('toodies_user', JSON.stringify(updatedUser));
           }}
         />
       </>

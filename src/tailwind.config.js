@@ -1,4 +1,9 @@
 /** @type {import('tailwindcss').Config} */
+// Note: Tailwind v4 reads this via @config directive or auto-discovery.
+// Using createRequire for CJS plugin compatibility in ESM context.
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+
 export default {
   darkMode: ["class"],
   content: [

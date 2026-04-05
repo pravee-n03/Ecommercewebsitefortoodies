@@ -1,4 +1,3 @@
-import image_404faa741eb4394d917a24330c1566de438eea2b from 'figma:asset/404faa741eb4394d917a24330c1566de438eea2b.png'
 import { useState, useEffect, useRef } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -272,7 +271,7 @@ export function HelpCenter({ user, onClose }: HelpCenterProps) {
                     <div className="text-center py-12 flex flex-col items-center">
                       <div className="w-24 h-24 rounded-[32px] bg-[#d4af37]/5 border border-[#d4af37]/10 flex items-center justify-center mb-8 relative">
                         <div className="absolute inset-0 bg-[#d4af37]/5 rounded-[32px] blur-2xl animate-pulse" />
-                        <Sparkles src={image_404faa741eb4394d917a24330c1566de438eea2b} className="w-10 h-10 text-[#d4af37]/40 relative z-10" />
+                        <Sparkles className="w-10 h-10 text-[#d4af37]/40 relative z-10" />
                       </div>
                       <h3 className="text-white text-2xl font-black uppercase tracking-tight mb-3">Exquisite Assistance</h3>
                       <p className="text-slate-500 text-sm max-w-[260px] mb-10 leading-relaxed font-light">

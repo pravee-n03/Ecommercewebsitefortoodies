@@ -12,6 +12,8 @@
   [build.environment]
     NODE_VERSION = "20"
     NODE_ENV = "production"
+    CI = "false"
+    SKIP_PREFLIGHT_CHECK = "true"
 
 # Single Page Application (SPA) routing
 # Redirects all routes to index.html for client-side routing

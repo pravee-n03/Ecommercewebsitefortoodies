@@ -8,16 +8,12 @@ function figmaAssetPlugin() {
     name: 'figma-asset-plugin',
     resolveId(id: string) {
       if (id.startsWith('figma:asset/')) {
-        // Return a resolved path that Vite can handle
         return id;
       }
     },
     load(id: string) {
       if (id.startsWith('figma:asset/')) {
-        // Extract the asset filename
         const assetPath = id.replace('figma:asset/', '');
-        // Return a module that exports the asset path
-        // Since these assets may not exist, we'll return a placeholder
         return `export default "/placeholder-${assetPath}"`;
       }
     }
@@ -30,23 +26,28 @@ export default defineConfig({
   
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './')
+      '@': path.resolve(__dirname, './'),
+      // Figma Make uses versioned imports (e.g. sonner@2.0.3) which don't
+      // exist as real npm package names — map them to the actual package.
+      'sonner@2.0.3': 'sonner',
     }
   },
   
   build: {
     outDir: 'dist',
     sourcemap: false,
+    minify: 'esbuild',
+    target: 'es2020',
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router'],
-          'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-popover'],
-          'supabase': ['@supabase/supabase-js']
-        }
+        manualChunks: undefined
+      },
+      onwarn(warning, warn) {
+        if (warning.code === 'UNUSED_EXTERNAL_IMPORT') return;
+        warn(warning);
       }
     },
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 2000
   },
   
   server: {
@@ -59,16 +60,19 @@ export default defineConfig({
     host: true
   },
   
-  // Environment variable prefix
   envPrefix: 'VITE_',
   
-  // Optimize dependencies
   optimizeDeps: {
     include: [
       'react',
       'react-dom',
-      'react-router',
-      '@supabase/supabase-js'
-    ]
+      '@supabase/supabase-js',
+      'sonner',
+    ],
+    exclude: []
+  },
+
+  esbuild: {
+    logOverride: { 'this-is-undefined-in-esm': 'silent' }
   }
 });

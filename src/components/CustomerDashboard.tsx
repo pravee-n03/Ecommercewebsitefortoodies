@@ -1,4 +1,3 @@
-import image_c561690211cdd59869b2af6c111db0bf09f362da from 'figma:asset/c561690211cdd59869b2af6c111db0bf09f362da.png'
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingBag, Palette, Package, User as UserIcon, X, Menu, LogOut, Search, Bell, HeadphonesIcon, MessageCircle } from 'lucide-react';

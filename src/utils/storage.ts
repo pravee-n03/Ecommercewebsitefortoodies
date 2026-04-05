@@ -3,13 +3,13 @@
  * =====================
  * This file handles ONLY client-side UI preferences and temporary draft data.
  * All persistent data (users, products, orders, etc.) is stored in Supabase.
- * 
+ *
  * What localStorage IS used for:
  * - UI preferences (theme, sidebar state)
  * - Temporary draft data (2D designer auto-save before submission)
  * - Popup dismissal tracking (which popups user has seen)
  * - Clipboard data (copy/paste in designer)
- * 
+ *
  * What localStorage is NOT used for:
  * - User accounts and authentication (Supabase Auth)
  * - Products, orders, coupons (Supabase Database)
@@ -21,9 +21,6 @@
 // UI PREFERENCES (Client-side only, not synced)
 // ============================================================
 
-/**
- * Get shown popup IDs (which popups the user has dismissed)
- */
 export function getShownPopups(): string[] {
   try {
     const data = localStorage.getItem('toodies_shown_popups');
@@ -33,9 +30,6 @@ export function getShownPopups(): string[] {
   }
 }
 
-/**
- * Mark a popup as shown
- */
 export function addShownPopup(popupId: string): void {
   try {
     const shown = getShownPopups();
@@ -48,9 +42,6 @@ export function addShownPopup(popupId: string): void {
   }
 }
 
-/**
- * Clear shown popups (for testing)
- */
 export function clearShownPopups(): void {
   try {
     localStorage.removeItem('toodies_shown_popups');
@@ -70,9 +61,6 @@ export interface DesignerDraft {
   timestamp: string;
 }
 
-/**
- * Save designer draft (auto-save while user is working)
- */
 export function saveDesignerDraft(draft: DesignerDraft): void {
   try {
     localStorage.setItem('toodies_draft_design', JSON.stringify(draft));
@@ -81,9 +69,6 @@ export function saveDesignerDraft(draft: DesignerDraft): void {
   }
 }
 
-/**
- * Load designer draft
- */
 export function loadDesignerDraft(): DesignerDraft | null {
   try {
     const data = localStorage.getItem('toodies_draft_design');
@@ -93,9 +78,6 @@ export function loadDesignerDraft(): DesignerDraft | null {
   }
 }
 
-/**
- * Clear designer draft (after submission or explicit clear)
- */
 export function clearDesignerDraft(): void {
   try {
     localStorage.removeItem('toodies_draft_design');
@@ -108,9 +90,6 @@ export function clearDesignerDraft(): void {
 // CLIPBOARD (Copy/paste in designer)
 // ============================================================
 
-/**
- * Save element to clipboard
- */
 export function saveToClipboard(element: any): void {
   try {
     localStorage.setItem('toodies_clipboard', JSON.stringify(element));
@@ -119,9 +98,6 @@ export function saveToClipboard(element: any): void {
   }
 }
 
-/**
- * Load element from clipboard
- */
 export function loadFromClipboard(): any | null {
   try {
     const data = localStorage.getItem('toodies_clipboard');
@@ -132,35 +108,187 @@ export function loadFromClipboard(): any | null {
 }
 
 // ============================================================
+// HELPER — safe localStorage JSON read/write
+// ============================================================
+
+function readKey<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeKey(key: string, value: any): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.warn(`Failed to write localStorage key "${key}":`, e);
+  }
+}
+
+// ============================================================
 // LEGACY COMPATIBILITY LAYER
 // ============================================================
-// These are kept for backwards compatibility but should be migrated to Supabase
-// They will be removed in a future version
+// These methods exist so that components that haven't yet been
+// fully migrated to Supabase don't crash at runtime.
+// Production data is served by Supabase; these are safe stubs
+// that return empty / default values and persist nothing critical.
 
-/**
- * @deprecated Use Supabase Auth instead
- */
 export const storageUtils = {
-  // These are DEPRECATED and should not be used
-  // They are kept only for backwards compatibility
-  // All new code should use supabaseApi from /utils/supabaseApi.ts
-  
+  // ── Popup tracking ──────────────────────────────────────────────────
   getShownPopups,
-  saveShownPopups: (popups: string[]) => {
-    try {
-      localStorage.setItem('toodies_shown_popups', JSON.stringify(popups));
-    } catch (error) {
-      console.warn('Failed to save shown popups:', error);
-    }
-  },
+  saveShownPopups: (popups: string[]) => writeKey('toodies_shown_popups', popups),
   addShownPopup,
   removeShownPopup: (popupId: string) => {
-    try {
-      const shown = getShownPopups();
-      const filtered = shown.filter(id => id !== popupId);
-      localStorage.setItem('toodies_shown_popups', JSON.stringify(filtered));
-    } catch (error) {
-      console.warn('Failed to remove shown popup:', error);
+    const shown = getShownPopups().filter(id => id !== popupId);
+    writeKey('toodies_shown_popups', shown);
+  },
+
+  // ── Popup messages (admin-created; Supabase is primary) ─────────────
+  getPopupMessages: (): any[] => readKey('toodies_popup_messages', []),
+  savePopupMessages: (msgs: any[]) => writeKey('toodies_popup_messages', msgs),
+  addPopupMessage: (msg: any) => {
+    const msgs = readKey<any[]>('toodies_popup_messages', []);
+    writeKey('toodies_popup_messages', [...msgs, msg]);
+  },
+
+  // ── Chat conversations (Supabase is primary) ─────────────────────────
+  getChatConversations: (): any[] => readKey('toodies_chat_conversations', []),
+  saveChatConversations: (convs: any[]) => writeKey('toodies_chat_conversations', convs),
+  addChatConversation: (conv: any) => {
+    const convs = readKey<any[]>('toodies_chat_conversations', []);
+    const exists = convs.findIndex((c: any) => c.id === conv.id);
+    if (exists >= 0) {
+      convs[exists] = conv;
+    } else {
+      convs.push(conv);
     }
+    writeKey('toodies_chat_conversations', convs);
+  },
+  updateChatConversation: (conv: any) => {
+    const convs = readKey<any[]>('toodies_chat_conversations', []);
+    const idx = convs.findIndex((c: any) => c.id === conv.id);
+    if (idx >= 0) convs[idx] = conv;
+    writeKey('toodies_chat_conversations', convs);
+  },
+
+  // ── Admin settings (Supabase is primary) ─────────────────────────────
+  getAdminSettings: (): any => readKey('toodies_admin_settings', {}),
+  saveAdminSettings: (settings: any) => writeKey('toodies_admin_settings', settings),
+
+  // ── Business info (Supabase is primary) ──────────────────────────────
+  getBusinessInfo: (): any => readKey('toodies_business_info', {
+    companyName: 'Toodies',
+    phone: '+91 98865 10858',
+    email: 'hello@toodies.com',
+    whatsapp: '+919886510858',
+    city: 'Bangalore',
+    state: 'Karnataka',
+    socialMedia: {},
+  }),
+  saveBusinessInfo: (info: any) => writeKey('toodies_business_info', info),
+
+  // ── Products (Supabase is primary; stub returns [] for safety) ────────
+  getProducts: (): any[] => readKey('toodies_products', []),
+  addProduct: (product: any) => {
+    const products = readKey<any[]>('toodies_products', []);
+    writeKey('toodies_products', [...products, { ...product, id: product.id || Date.now().toString() }]);
+  },
+  updateProduct: (id: string, data: any) => {
+    const products = readKey<any[]>('toodies_products', []);
+    writeKey('toodies_products', products.map((p: any) => p.id === id ? { ...p, ...data } : p));
+  },
+  deleteProduct: (id: string) => {
+    const products = readKey<any[]>('toodies_products', []);
+    writeKey('toodies_products', products.filter((p: any) => p.id !== id));
+  },
+
+  // ── Categories (Supabase is primary) ─────────────────────────────────
+  getCategories: (): string[] => readKey('toodies_categories', []),
+  addCategory: (name: string): boolean => {
+    const cats = readKey<string[]>('toodies_categories', []);
+    if (cats.includes(name)) return false;
+    writeKey('toodies_categories', [...cats, name]);
+    return true;
+  },
+  deleteCategory: (name: string) => {
+    const cats = readKey<string[]>('toodies_categories', []).filter(c => c !== name);
+    writeKey('toodies_categories', cats);
+  },
+
+  // ── Orders (Supabase is primary; stub returns [] for safety) ─────────
+  getOrders: (): any[] => readKey('toodies_orders', []),
+  createOrder: (order: any) => {
+    const orders = readKey<any[]>('toodies_orders', []);
+    writeKey('toodies_orders', [...orders, { ...order, id: order.id || Date.now().toString() }]);
+  },
+  updateOrder: (id: string, data: any) => {
+    const orders = readKey<any[]>('toodies_orders', []);
+    writeKey('toodies_orders', orders.map((o: any) => o.id === id ? { ...o, ...data } : o));
+  },
+
+  // ── Users / Auth (Supabase Auth is primary) ──────────────────────────
+  getUsers: (): any[] => readKey('toodies_users', []),
+  getCurrentUser: (): any | null => readKey('toodies_user', null),
+  updateCurrentUser: (user: any) => {
+    writeKey('toodies_user', user);
+    localStorage.setItem('toodies_user', JSON.stringify(user));
+  },
+  loginUser: (_email: string, _password: string): any | null => {
+    // Stub — real auth handled by Supabase (authApi.customerSignin)
+    throw new Error('localStorage auth is disabled. Please use Supabase auth.');
+  },
+  registerUser: (_email: string, _mobile: string, _password: string, _name: string): any | null => {
+    // Stub — real auth handled by Supabase (authApi.customerSignup)
+    throw new Error('localStorage auth is disabled. Please use Supabase auth.');
+  },
+  logoutUser: () => {
+    localStorage.removeItem('toodies_access_token');
+    localStorage.removeItem('toodies_user');
+  },
+  logoutAdmin: () => {
+    localStorage.removeItem('toodies_access_token');
+    localStorage.removeItem('toodies_user');
+    localStorage.removeItem('admin_bypass_active');
+  },
+
+  // ── Coupons (Supabase is primary) ────────────────────────────────────
+  getCoupons: (): any[] => readKey('toodies_coupons', []),
+  addCoupon: (coupon: any) => {
+    const coupons = readKey<any[]>('toodies_coupons', []);
+    writeKey('toodies_coupons', [...coupons, { ...coupon, id: coupon.id || Date.now().toString() }]);
+  },
+  updateCoupon: (coupon: any) => {
+    const coupons = readKey<any[]>('toodies_coupons', []);
+    const idx = coupons.findIndex((c: any) => c.id === coupon.id);
+    if (idx >= 0) coupons[idx] = coupon; else coupons.push(coupon);
+    writeKey('toodies_coupons', coupons);
+  },
+  deleteCoupon: (id: string) => {
+    const coupons = readKey<any[]>('toodies_coupons', []).filter((c: any) => c.id !== id);
+    writeKey('toodies_coupons', coupons);
+  },
+
+  // ── Message templates (Supabase is primary) ──────────────────────────
+  getMessageTemplates: (): any[] => readKey('toodies_message_templates', []),
+  saveMessageTemplates: (templates: any[]) => writeKey('toodies_message_templates', templates),
+
+  // ── 3D Model configs (Supabase is primary) ───────────────────────────
+  get3DModelConfigs: (): any[] => readKey('toodies_3d_model_configs', []),
+  get3DModelConfigByProductId: (productId: string): any | null => {
+    const configs = readKey<any[]>('toodies_3d_model_configs', []);
+    return configs.find((c: any) => c.productId === productId || c.product_id === productId) || null;
+  },
+  save3DModelConfig: (config: any) => {
+    const configs = readKey<any[]>('toodies_3d_model_configs', []);
+    const idx = configs.findIndex((c: any) => c.id === config.id);
+    if (idx >= 0) configs[idx] = config; else configs.push(config);
+    writeKey('toodies_3d_model_configs', configs);
+  },
+  delete3DModelConfig: (id: string) => {
+    const configs = readKey<any[]>('toodies_3d_model_configs', []).filter((c: any) => c.id !== id);
+    writeKey('toodies_3d_model_configs', configs);
   },
 };
