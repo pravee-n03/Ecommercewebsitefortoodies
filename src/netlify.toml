@@ -70,10 +70,6 @@
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
     Access-Control-Allow-Headers = "Content-Type, Authorization"
 
-# Plugin for automatic asset optimization
-[[plugins]]
-  package = "@netlify/plugin-lighthouse"
-
 # Build optimization
 [build.processing]
   skip_processing = false
