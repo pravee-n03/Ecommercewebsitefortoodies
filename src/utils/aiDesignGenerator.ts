@@ -1,3 +1,5 @@
+import { aiConfigApi } from './supabaseApi';
+
 // Version check - helps detect browser caching issues
 console.log('✅ AI Design Generator v4.0 loaded - Supabase-backed providers');
 
@@ -49,8 +51,6 @@ export function getActiveAIProvider() {
  */
 export async function getActiveAIProviderAsync(): Promise<any | null> {
   try {
-    // Dynamically import to avoid circular deps
-    const { aiConfigApi } = await import('./supabaseApi');
     const provider = await aiConfigApi.getActiveImageProvider();
     if (provider) {
       // Update localStorage cache so synchronous reads stay fresh
@@ -490,7 +490,6 @@ export async function generateCompleteDesign(userPrompt: string, productType: st
 export async function generateDesignImage(prompt: string, productType: string = 't-shirt'): Promise<string> {
   // Refresh provider cache from Supabase before generating
   try {
-    const { aiConfigApi } = await import('./supabaseApi');
     const all = await aiConfigApi.getProviders();
     if (all.length > 0) {
       localStorage.setItem('ai_providers', JSON.stringify(all));

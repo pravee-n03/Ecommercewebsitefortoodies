@@ -1,9 +1,3 @@
-import { AdminDashboard } from './components/AdminDashboard';
-import { CustomerAuth } from './components/CustomerAuth';
-import { CustomerDashboard } from './components/CustomerDashboard';
-import { PrivacyPolicy } from './components/PrivacyPolicy';
-import { TermsAndConditions } from './components/TermsAndConditions';
-import { TwoDStudioPage } from './components/TwoDStudioPage';
 import { SupabaseConnectionBanner } from './components/SupabaseConnectionBanner';
 import { GoogleAnalytics, FacebookPixel } from './components/SEOHead';
 import { User, CustomDesign } from './types';
@@ -11,10 +5,9 @@ import { Sparkles, ShoppingBag, Palette, Phone, Mail, MapPin, MessageCircle, Use
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './components/figma/ImageWithFallback';
 import { authApi, productsApi, settingsApi } from './utils/supabaseApi';
-import { useState, useEffect } from 'react';
+import { Suspense, lazy, useState, useEffect } from 'react';
 import { toast, Toaster } from 'sonner@2.0.3';
 import { Button } from './components/ui/button';
-import { AdminLogin } from './components/AdminLogin';
 import toodiesLogo from 'figma:asset/c561690211cdd59869b2af6c111db0bf09f362da.png';
 import tigerIcon from 'figma:asset/0384d838979de15e8db05f2eef126aa9e88613fe.png';
 
@@ -22,6 +15,36 @@ import tigerIcon from 'figma:asset/0384d838979de15e8db05f2eef126aa9e88613fe.png'
 import './utils/localStorageDetector';
 
 type ViewMode = 'landing' | 'admin' | 'customer' | 'privacy' | 'terms' | '2dstudio';
+
+const AdminDashboard = lazy(() =>
+  import('./components/AdminDashboard').then((module) => ({ default: module.AdminDashboard }))
+);
+const CustomerAuth = lazy(() =>
+  import('./components/CustomerAuth').then((module) => ({ default: module.CustomerAuth }))
+);
+const CustomerDashboard = lazy(() =>
+  import('./components/CustomerDashboard').then((module) => ({ default: module.CustomerDashboard }))
+);
+const PrivacyPolicy = lazy(() =>
+  import('./components/PrivacyPolicy').then((module) => ({ default: module.PrivacyPolicy }))
+);
+const TermsAndConditions = lazy(() =>
+  import('./components/TermsAndConditions').then((module) => ({ default: module.TermsAndConditions }))
+);
+const TwoDStudioPage = lazy(() =>
+  import('./components/TwoDStudioPage').then((module) => ({ default: module.TwoDStudioPage }))
+);
+const AdminLogin = lazy(() =>
+  import('./components/AdminLogin').then((module) => ({ default: module.AdminLogin }))
+);
+
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen bg-[#000000] text-white flex items-center justify-center">
+      <div className="text-sm tracking-[0.3em] uppercase text-[#d4af37]">Loading</div>
+    </div>
+  );
+}
 
 export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('landing');
@@ -233,22 +256,26 @@ export default function App() {
   // Privacy Policy View
   if (viewMode === 'privacy') {
     return (
-      <>
-        <Toaster />
-        <PrivacyPolicy onBack={goToLanding} />
-      </>
-    );
-  }
+        <>
+          <Toaster />
+          <Suspense fallback={<LoadingScreen />}>
+            <PrivacyPolicy onBack={goToLanding} />
+          </Suspense>
+        </>
+      );
+    }
 
   // Terms and Conditions View
   if (viewMode === 'terms') {
     return (
-      <>
-        <Toaster />
-        <TermsAndConditions onBack={goToLanding} />
-      </>
-    );
-  }
+        <>
+          <Toaster />
+          <Suspense fallback={<LoadingScreen />}>
+            <TermsAndConditions onBack={goToLanding} />
+          </Suspense>
+        </>
+      );
+    }
 
   // Landing Page
   if (viewMode === 'landing') {
@@ -713,7 +740,9 @@ export default function App() {
         <>
           <Toaster />
           <SupabaseConnectionBanner />
-          <AdminLogin onLogin={handleAdminLogin} />
+          <Suspense fallback={<LoadingScreen />}>
+            <AdminLogin onLogin={handleAdminLogin} />
+          </Suspense>
         </>
       );
     }
@@ -721,7 +750,9 @@ export default function App() {
       <>
         <Toaster />
         <SupabaseConnectionBanner />
-        <AdminDashboard onLogout={handleAdminLogout} />
+        <Suspense fallback={<LoadingScreen />}>
+          <AdminDashboard onLogout={handleAdminLogout} />
+        </Suspense>
       </>
     );
   }
@@ -735,14 +766,16 @@ export default function App() {
     return (
       <>
         <Toaster />
-        <TwoDStudioPage 
-          onBack={() => setViewMode('customer')} 
-          user={currentUser}
-          onUserUpdate={(updatedUser) => {
-            setCurrentUser(updatedUser);
-            localStorage.setItem('toodies_user', JSON.stringify(updatedUser));
-          }}
-        />
+        <Suspense fallback={<LoadingScreen />}>
+          <TwoDStudioPage 
+            onBack={() => setViewMode('customer')} 
+            user={currentUser}
+            onUserUpdate={(updatedUser) => {
+              setCurrentUser(updatedUser);
+              localStorage.setItem('toodies_user', JSON.stringify(updatedUser));
+            }}
+          />
+        </Suspense>
       </>
     );
   }
@@ -751,11 +784,13 @@ export default function App() {
     return (
       <>
         <Toaster />
-        <CustomerAuth 
-          onLogin={handleCustomerLogin} 
-          onPrivacyClick={goToPrivacy}
-          onTermsClick={goToTerms}
-        />
+        <Suspense fallback={<LoadingScreen />}>
+          <CustomerAuth 
+            onLogin={handleCustomerLogin} 
+            onPrivacyClick={goToPrivacy}
+            onTermsClick={goToTerms}
+          />
+        </Suspense>
       </>
     );
   }
@@ -763,11 +798,13 @@ export default function App() {
   return (
     <>
       <Toaster />
-      <CustomerDashboard 
-        user={currentUser} 
-        onLogout={handleCustomerLogout}
-        onOpen2DStudio={goTo2DStudio}
-      />
+      <Suspense fallback={<LoadingScreen />}>
+        <CustomerDashboard 
+          user={currentUser} 
+          onLogout={handleCustomerLogout}
+          onOpen2DStudio={goTo2DStudio}
+        />
+      </Suspense>
     </>
   );
 }

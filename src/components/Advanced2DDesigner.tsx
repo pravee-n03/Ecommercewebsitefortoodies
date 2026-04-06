@@ -66,7 +66,7 @@ import { ThreeDModelConfig } from '../types';
 import { storageUtils } from '../utils/storage';
 import { DesignCheckoutModal } from './DesignCheckoutModal';
 import { generateWithPaperspaceSD } from '../utils/aiDesignGenerator';
-import { aiConfigApi } from '../utils/supabaseApi';
+import { aiConfigApi, settingsApi } from '../utils/supabaseApi';
 
 interface TwoDDesignerProps {
   isOpen: boolean;
@@ -620,8 +620,6 @@ export function Advanced2DDesigner({
     // Get admin settings for background removal API from Supabase
     try {
       setIsRemovingBackground(true);
-      const { settingsApi } = await import('../utils/supabaseApi');
-      
       const settings = await settingsApi.getAdminSettings();
 
       if (!settings?.background_removal_enabled || !settings?.background_removal_api_key) {
