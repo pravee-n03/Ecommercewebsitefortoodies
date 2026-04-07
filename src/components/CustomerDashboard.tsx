@@ -585,7 +585,7 @@ export function CustomerDashboard({ user, onLogout, onOpen2DStudio }: CustomerDa
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
-                src={image_c561690211cdd59869b2af6c111db0bf09f362da} 
+                src={toodiesLogo} 
                 alt="Toodies" 
                 className="h-8 w-auto" 
               />

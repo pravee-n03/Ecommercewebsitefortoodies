@@ -7,7 +7,7 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { Package, Plus, Edit, Trash2, LogOut, ShoppingBag, Settings, Upload, X, Ticket, Users, Tag, MessageSquare, Bell, LayoutDashboard, TrendingUp, AlertTriangle, DollarSign, HeadphonesIcon, Building2, Palette, CheckCircle, Smartphone, Gift, Sparkles, Database } from 'lucide-react';
+import { Package, Plus, Edit, Trash2, LogOut, ShoppingBag, Settings, Upload, X, Ticket, Users, Tag, MessageSquare, Bell, LayoutDashboard, TrendingUp, AlertTriangle, DollarSign, HeadphonesIcon, Building2, Palette, CheckCircle, Smartphone, Gift, Sparkles, Database, Image as ImageIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Product, ProductVariation } from '../types';
 import { storageUtils } from '../utils/storage';
@@ -24,6 +24,7 @@ import { HelpCenterManagement } from './HelpCenterManagement';
 import { GiftingManagement } from './GiftingManagement';
 import { BusinessSettings } from './BusinessSettings';
 import { DesignIntegrationInfo } from './DesignIntegrationInfo';
+import { HeroContentSettings } from './HeroContentSettings';
 import { CustomerDesignsManagement } from './CustomerDesignsManagement';
 import { AdminDesignOrders } from './AdminDesignOrders';
 import { AdminDesignApproval } from './AdminDesignApproval';
@@ -442,6 +443,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
     { value: 'helpcenter', label: 'Support', icon: HeadphonesIcon },
     { value: 'gifting', label: 'Gifting', icon: Gift },
     { value: 'business', label: 'Enterprise', icon: Building2 },
+    { value: 'herocontent', label: 'Landing Page', icon: ImageIcon },
     { value: 'settings', label: 'Security', icon: Settings },
     { value: 'ai', label: 'AI Keys', icon: Sparkles },
     { value: 'dbsetup', label: 'DB Setup', icon: Database },
@@ -976,6 +978,10 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
 
           <TabsContent value="business">
             <BusinessSettings />
+          </TabsContent>
+
+          <TabsContent value="herocontent">
+            <HeroContentSettings />
           </TabsContent>
           
           <TabsContent value="3dintegration">

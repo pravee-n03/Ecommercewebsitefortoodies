@@ -21,7 +21,6 @@
         'figma:asset/d31f1d417f75594ba1ab67a4c64ef32e85ec2234.png': path.resolve(__dirname, './src/assets/d31f1d417f75594ba1ab67a4c64ef32e85ec2234.png'),
         'figma:asset/c561690211cdd59869b2af6c111db0bf09f362da.png': path.resolve(__dirname, './src/assets/c561690211cdd59869b2af6c111db0bf09f362da.png'),
         'figma:asset/404faa741eb4394d917a24330c1566de438eea2b.png': path.resolve(__dirname, './src/assets/404faa741eb4394d917a24330c1566de438eea2b.png'),
-        'figma:asset/0384d838979de15e8db05f2eef126aa9e88613fe.png': path.resolve(__dirname, './src/assets/0384d838979de15e8db05f2eef126aa9e88613fe.png'),
         'embla-carousel-react@8.6.0': 'embla-carousel-react',
         'cmdk@1.1.1': 'cmdk',
         'class-variance-authority@0.7.1': 'class-variance-authority',
@@ -57,48 +56,7 @@
     },
     build: {
       target: 'esnext',
-      outDir: 'dist',
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (!id.includes('node_modules')) {
-              return;
-            }
-
-            if (
-              id.includes('/@supabase/') ||
-              id.includes('/@jsr/supabase__supabase-js/')
-            ) {
-              return 'supabase-vendor';
-            }
-
-            if (id.includes('/@radix-ui/')) {
-              return 'radix-vendor';
-            }
-
-            if (
-              id.includes('/embla-carousel-react/') ||
-              id.includes('/recharts/') ||
-              id.includes('/three/')
-            ) {
-              return 'graphics-vendor';
-            }
-
-            if (id.includes('/lucide-react/')) {
-              return 'icons-vendor';
-            }
-
-            if (
-              id.includes('/jspdf/') ||
-              id.includes('/html2canvas/') ||
-              id.includes('/jszip/')
-            ) {
-              return 'export-vendor';
-            }
-          },
-        },
-      },
-      chunkSizeWarningLimit: 1000,
+      outDir: 'build',
     },
     server: {
       port: 3000,
