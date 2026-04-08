@@ -1,8 +1,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
-// Custom plugin to handle figma:asset imports
+// ─── Custom plugin: handles figma:asset/... virtual imports ──────────────────
+// Figma Make exports components with figma:asset imports. On Netlify, these
+// don't exist as real files, so we return a transparent 1×1 PNG data-URI.
+// All real logos/images now use ToodiesLogoSVG or ImageWithFallback instead.
 function figmaAssetPlugin() {
   return {
     name: 'figma-asset-plugin',
@@ -13,25 +17,31 @@ function figmaAssetPlugin() {
     },
     load(id: string) {
       if (id.startsWith('figma:asset/')) {
-        // Return a transparent 1×1 PNG data URI so broken <img> icons never show.
-        // All logos/brand images now use the ToodiesLogoSVG component instead.
+        // Transparent 1×1 PNG – safe fallback so no broken-image icons appear
         return `export default "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="`;
       }
-    }
+    },
   };
 }
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), figmaAssetPlugin()],
+  plugins: [
+    // ① Tailwind CSS v4 — must come before react() plugin
+    tailwindcss(),
+    // ② React JSX transform
+    react(),
+    // ③ figma:asset virtual module handler
+    figmaAssetPlugin(),
+  ],
 
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './'),
 
-      // ─── Version-pinned specifiers → actual installed package names ──────────
+      // ─── Version-pinned specifiers → installed package names ──────────────
       // Figma Make exports components with version-pinned import specifiers
-      // (e.g. "vaul@1.1.2"). Vite/Rollup cannot resolve those as-is, so we
+      // (e.g. "sonner@2.0.3"). Vite/Rollup can't resolve those as-is, so we
       // map every versioned specifier to the plain package name that IS installed.
       // ─────────────────────────────────────────────────────────────────────────
 
@@ -76,7 +86,7 @@ export default defineConfig({
       '@radix-ui/react-toggle@1.1.2': '@radix-ui/react-toggle',
       '@radix-ui/react-toggle-group@1.1.2': '@radix-ui/react-toggle-group',
       '@radix-ui/react-tooltip@1.1.8': '@radix-ui/react-tooltip',
-    }
+    },
   },
 
   build: {
@@ -88,11 +98,11 @@ export default defineConfig({
     target: 'es2020',
     rollupOptions: {
       output: {
-        // Let Rollup decide automatic chunking — avoids oversized bundles
+        // Let Rollup decide automatic chunking – avoids oversized bundles
         manualChunks: undefined,
       },
       onwarn(warning, warn) {
-        // Silence noisy-but-harmless warnings
+        // Silence harmless warnings
         if (warning.code === 'UNUSED_EXTERNAL_IMPORT') return;
         if (warning.code === 'MODULE_LEVEL_DIRECTIVE') return;
         warn(warning);

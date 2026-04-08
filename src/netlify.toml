@@ -1,17 +1,20 @@
 # Netlify Configuration for Toodies E-commerce Platform
-# Optimized for React + Vite 6 + Supabase
+# Optimized for React + Vite 6 + Tailwind v4 + Supabase
 
 [build]
-  command   = "npm run build"
+  command = "npm install && npm run build"
   # !! Must match vite.config.ts build.outDir !!
-  publish   = "dist"
+  publish = "dist"
 
   [build.environment]
-    NODE_VERSION           = "20"
-    NODE_ENV               = "production"
-    # Prevent Netlify treating warnings as hard errors
-    CI                     = "false"
-    SKIP_PREFLIGHT_CHECK   = "true"
+    NODE_VERSION = "20"
+    # NOTE: Do NOT set NODE_ENV=production here — npm skips devDependencies
+    # when NODE_ENV=production, which breaks the Vite/Tailwind build tools.
+    # Vite automatically sets NODE_ENV=production inside the built output.
+    CI = "false"
+    SKIP_PREFLIGHT_CHECK = "true"
+    # Force npm to install ALL dependencies including devDependencies
+    NPM_FLAGS = "--include=dev"
 
 # ─── Single Page Application routing ───────────────────────────────────────
 # All routes must resolve to index.html so React Router handles navigation.
@@ -56,52 +59,25 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    X-Frame-Options           = "DENY"
-    X-Content-Type-Options    = "nosniff"
-    X-XSS-Protection          = "1; mode=block"
-    Referrer-Policy           = "strict-origin-when-cross-origin"
-    Permissions-Policy        = "camera=(), microphone=(), geolocation=()"
-
-# ─── CORS for Supabase API calls ────────────────────────────────────────────
-[[headers]]
-  for = "/api/*"
-  [headers.values]
-    Access-Control-Allow-Origin  = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
-    Access-Control-Allow-Headers = "Content-Type, Authorization"
-
-# ─── Build processing ───────────────────────────────────────────────────────
-[build.processing]
-  skip_processing = false
-
-[build.processing.css]
-  bundle  = true
-  minify  = true
-
-[build.processing.js]
-  bundle  = true
-  minify  = true
-
-[build.processing.html]
-  pretty_urls = true
-
-[build.processing.images]
-  compress = true
+    X-Frame-Options        = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection       = "1; mode=block"
+    Referrer-Policy        = "strict-origin-when-cross-origin"
 
 # ─── Context overrides ──────────────────────────────────────────────────────
 [context.production]
-  command = "npm run build"
+  command = "npm install && npm run build"
 
 [context.deploy-preview]
-  command = "npm run build"
+  command = "npm install && npm run build"
 
 [context.branch-deploy]
-  command = "npm run build"
+  command = "npm install && npm run build"
 
 # ─── Local dev via Netlify Dev ──────────────────────────────────────────────
 [dev]
-  command      = "npm run dev"
-  port         = 5173
-  targetPort   = 5173
-  publish      = "dist"
-  autoLaunch   = false
+  command    = "npm run dev"
+  port       = 5173
+  targetPort = 5173
+  publish    = "dist"
+  autoLaunch = false

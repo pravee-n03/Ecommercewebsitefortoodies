@@ -1,12 +1,10 @@
-// Tailwind v4 uses CSS-based configuration via @theme in globals.css.
-// This file is kept for tooling compatibility only (IDE autocomplete, etc.)
-// The actual design tokens live in styles/globals.css → @theme inline { ... }
+// Tailwind CSS v4: All configuration is done via CSS in styles/globals.css
+// using @theme, @custom-variant and @layer directives.
+//
+// This file is kept for IDE tooling compatibility only.
+// The @tailwindcss/vite plugin (vite.config.ts) handles all processing.
+//
+// ❌ Do NOT add darkMode, content, or theme here — use CSS instead.
 
 /** @type {import('tailwindcss').Config} */
-export default {
-  darkMode: ["class"],
-  content: [
-    './index.html',
-    './**/*.{ts,tsx}',
-  ],
-};
+export default {};
