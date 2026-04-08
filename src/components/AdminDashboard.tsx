@@ -38,6 +38,7 @@ import { AIIntegrationSettings } from './AIIntegrationSettings';
 import { SupabaseSetupGuide } from './SupabaseSetupGuide';
 import { toast } from 'sonner@2.0.3';
 import { Badge } from './ui/badge';
+import { ToodiesWordmark } from './ToodiesLogoSVG';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -458,7 +459,11 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
           className="flex justify-between items-center mb-8"
         >
           <div>
-            <h1 className="text-3xl font-bold text-white glow-text tracking-wider uppercase">Admin Studio</h1>
+            <div className="flex items-center gap-4 mb-1">
+              <ToodiesWordmark height={28} />
+              <div className="w-px h-6 bg-[#d4af37]/20" />
+              <h1 className="text-3xl font-bold text-white glow-text tracking-wider uppercase">Admin Studio</h1>
+            </div>
             <p className="text-slate-500 font-light">Bespoke Enterprise Management</p>
           </div>
           <div className="flex gap-4">

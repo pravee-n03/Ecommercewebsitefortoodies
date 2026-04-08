@@ -13,8 +13,9 @@ function figmaAssetPlugin() {
     },
     load(id: string) {
       if (id.startsWith('figma:asset/')) {
-        const assetPath = id.replace('figma:asset/', '');
-        return `export default "/placeholder-${assetPath}"`;
+        // Return a transparent 1×1 PNG data URI so broken <img> icons never show.
+        // All logos/brand images now use the ToodiesLogoSVG component instead.
+        return `export default "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="`;
       }
     }
   };

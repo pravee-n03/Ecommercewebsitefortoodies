@@ -5,6 +5,7 @@ import { Label } from './ui/label';
 import { Lock, Shield, Mail } from 'lucide-react';
 import { motion } from 'motion/react';
 import { authApi } from '../utils/supabaseApi';
+import { ToodiesLogoSVG } from './ToodiesLogoSVG';
 
 interface AdminLoginProps {
   onLogin: () => void;
@@ -55,8 +56,12 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
       >
         <div className="glass-card border border-[#d4af37]/20 p-10 rounded-[40px] shadow-2xl backdrop-blur-2xl bg-black/60 luxury-glow">
           <div className="text-center mb-10">
-            <div className="w-20 h-20 bg-gradient-to-br from-[#d4af37]/20 to-[#c9a227]/20 rounded-[20px] flex items-center justify-center mx-auto mb-6 border border-[#d4af37]/30">
-              <Shield className="w-10 h-10 text-[#d4af37]" />
+            {/* Logo */}
+            <div className="flex justify-center mb-6">
+              <ToodiesLogoSVG width={180} />
+            </div>
+            <div className="w-16 h-16 bg-gradient-to-br from-[#d4af37]/20 to-[#c9a227]/20 rounded-[16px] flex items-center justify-center mx-auto mb-4 border border-[#d4af37]/30">
+              <Shield className="w-8 h-8 text-[#d4af37]" />
             </div>
             <h1 className="text-3xl font-black text-white mb-2 uppercase tracking-[2px] glow-text">Admin Access</h1>
             <p className="text-slate-500 text-sm font-light">Authorized Personnel Only</p>

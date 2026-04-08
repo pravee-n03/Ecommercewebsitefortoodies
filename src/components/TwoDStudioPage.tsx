@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { ArrowLeft, Home, Palette } from 'lucide-react';
@@ -9,6 +9,7 @@ import { Product, User, ThreeDModelConfig } from '../types';
 import { toast } from 'sonner@2.0.3';
 import { Badge } from './ui/badge';
 import { productsApi } from '../utils/supabaseApi';
+import { ToodiesWordmark } from './ToodiesLogoSVG';
 
 interface TwoDStudioPageProps {
   onBack: () => void;
@@ -174,14 +175,20 @@ export function TwoDStudioPage({ onBack, user, onUserUpdate }: TwoDStudioPagePro
       <div className="sticky top-0 z-40 bg-black/90 backdrop-blur-xl border-b border-[#d4af37]/10">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <Button
-              onClick={onBack}
-              variant="ghost"
-              className="text-slate-300 hover:text-[#d4af37] hover:bg-[#d4af37]/5 nav-link"
-            >
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              Back to Dashboard
-            </Button>
+            <div className="flex items-center gap-4">
+              <Button
+                onClick={onBack}
+                variant="ghost"
+                className="text-slate-300 hover:text-[#d4af37] hover:bg-[#d4af37]/5 nav-link"
+              >
+                <ArrowLeft className="w-5 h-5 mr-2" />
+                Back to Dashboard
+              </Button>
+              <div className="w-px h-6 bg-[#d4af37]/20 hidden md:block" />
+              <div className="hidden md:block">
+                <ToodiesWordmark height={28} />
+              </div>
+            </div>
             <div className="flex items-center gap-4">
               <Button
                 onClick={onBack}

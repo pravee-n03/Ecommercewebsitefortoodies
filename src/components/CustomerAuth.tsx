@@ -10,7 +10,7 @@ import { toast } from 'sonner@2.0.3';
 import { User } from '../types';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Checkbox } from './ui/checkbox';
-import tigerLogo from 'figma:asset/404faa741eb4394d917a24330c1566de438eea2b.png';
+import { ToodiesLogoSVG } from './ToodiesLogoSVG';
 import { authApi } from '../utils/supabaseApi';
 
 interface CustomerAuthProps {
@@ -110,7 +110,7 @@ export function CustomerAuth({ onLogin, onPrivacyClick, onTermsClick }: Customer
         <Card className="glass-card border-[#d4af37]/20 rounded-[32px] overflow-hidden shadow-2xl luxury-glow">
           <CardHeader className="text-center pb-2">
             <div className="mx-auto w-24 h-24 rounded-2xl bg-[#d4af37]/10 flex items-center justify-center mb-4 border border-[#d4af37]/20">
-              <img src={tigerLogo} alt="Toodies" className="w-20 h-20 object-contain" />
+              <ToodiesLogoSVG width={72} height={72} />
             </div>
             <CardTitle className="text-3xl font-black text-white tracking-tight uppercase">Welcome to Toodies</CardTitle>
             <CardDescription className="text-slate-500 font-light text-sm mt-2 uppercase tracking-[2px]">

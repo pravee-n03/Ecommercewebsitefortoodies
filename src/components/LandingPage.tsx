@@ -2,7 +2,7 @@ import { motion } from 'motion/react';
 import { Sparkles, ShoppingBag, Palette, Phone, Mail, MapPin, MessageCircle, Users, Facebook, Instagram, Twitter, Linkedin, Shield, Star, Zap, Award, ChevronRight, ArrowRight } from 'lucide-react';
 import { Button } from './ui/button';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import toodiesLogo from 'figma:asset/c561690211cdd59869b2af6c111db0bf09f362da.png';
+import { ToodiesLogoSVG } from './ToodiesLogoSVG';
 
 interface LandingPageProps {
   businessInfo: any;
@@ -43,7 +43,7 @@ export function LandingPage({ businessInfo, adminSettings, onGoToCustomer, onGoT
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           {/* Logo */}
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center">
-            <img src={toodiesLogo} alt="Toodies" className="h-12 w-auto" />
+            <ToodiesLogoSVG height={48} />
           </motion.div>
 
           {/* Nav Links */}
@@ -499,7 +499,7 @@ export function LandingPage({ businessInfo, adminSettings, onGoToCustomer, onGoT
       <footer className="py-12" style={{ borderTop: '1px solid rgba(212,175,55,0.07)' }}>
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
-            <img src={toodiesLogo} alt="Toodies" className="h-7 w-auto opacity-35" />
+            <ToodiesLogoSVG height={28} className="opacity-35" />
 
             {/* Social Icons */}
             {(() => {

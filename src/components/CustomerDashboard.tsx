@@ -26,7 +26,7 @@ import { notificationService } from '../utils/notifications';
 import { toast } from 'sonner@2.0.3';
 import { productsApi, authApi, cartApi } from '../utils/supabaseApi';
 
-import toodiesLogo from 'figma:asset/d31f1d417f75594ba1ab67a4c64ef32e85ec2234.png';
+import { ToodiesWordmark } from './ToodiesLogoSVG';
 
 interface CustomerDashboardProps {
   user: User;
@@ -566,15 +566,14 @@ export function CustomerDashboard({ user, onLogout, onOpen2DStudio }: CustomerDa
         <div className="p-6 flex items-center justify-between">
           <AnimatePresence mode="wait">
             {isSidebarOpen && (
-              <motion.img 
+              <motion.div 
                 key="logo"
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
-                src={toodiesLogo} 
-                alt="Toodies" 
-                className="h-8 w-auto" 
-              />
+              >
+                <ToodiesWordmark height={32} />
+              </motion.div>
             )}
           </AnimatePresence>
           <Button 
