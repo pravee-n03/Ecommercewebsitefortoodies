@@ -1796,7 +1796,7 @@ export const aiConfigApi = {
         return ls ? JSON.parse(ls) : [];
       }
 
-      // Map DB rows �� app provider format
+      // Map DB rows  app provider format
       return data.map((row: any) => ({
         id: row.provider_id,
         name: row.name,
@@ -1963,5 +1963,5 @@ export const invoicesApi = {
   },
 };
 
-// Export Supabase client for direct operations if needed
-export { supabase };
+// supabase is already exported at the top of this file (singleton export).
+// Duplicate export removed — fixes: "Multiple exports with the same name 'supabase'"
