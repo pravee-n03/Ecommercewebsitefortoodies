@@ -4,7 +4,7 @@
 [build]
   command = "npm install && npm run build"
   # !! Must match vite.config.ts build.outDir !!
-  publish = "dist"
+  publish = "build"
 
   [build.environment]
     NODE_VERSION = "20"

@@ -50,7 +50,7 @@ export function CustomerAuth({ onLogin, onPrivacyClick, onTermsClick }: Customer
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!signupEmail || !signupMobile || !signupPassword || !signupName) {
       toast.error('Please complete all fields to integrate with our platform.');
       return;
@@ -120,14 +120,14 @@ export function CustomerAuth({ onLogin, onPrivacyClick, onTermsClick }: Customer
           <CardContent className="pt-6">
             <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid w-full grid-cols-2 bg-white/5 border border-white/10 p-1 rounded-2xl mb-8">
-                <TabsTrigger 
+                <TabsTrigger
                   value="login"
                   className="rounded-xl data-[state=active]:bg-[#d4af37] data-[state=active]:text-black text-slate-400 font-bold uppercase text-[10px] tracking-widest transition-all"
                 >
                   <LogIn className="w-3.5 h-3.5 mr-2" />
                   Login
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="signup"
                   className="rounded-xl data-[state=active]:bg-[#d4af37] data-[state=active]:text-black text-slate-400 font-bold uppercase text-[10px] tracking-widest transition-all"
                 >
@@ -135,7 +135,7 @@ export function CustomerAuth({ onLogin, onPrivacyClick, onTermsClick }: Customer
                   Sign Up
                 </TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-6">
                   <div className="space-y-2">
@@ -166,18 +166,18 @@ export function CustomerAuth({ onLogin, onPrivacyClick, onTermsClick }: Customer
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-3 pt-2">
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={isLoading}
                       className="w-full h-14 bg-[#d4af37] hover:bg-[#c9a227] text-black font-black text-sm uppercase tracking-[3px] rounded-2xl border-0 shadow-lg shadow-[#d4af37]/20 active:scale-95 transition-all"
                     >
                       {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <LogIn className="w-4 h-4 mr-2" />}
                       {isLoading ? 'Authenticating...' : 'Login'}
                     </Button>
-                    <Button 
-                      type="button" 
+                    <Button
+                      type="button"
                       variant="outline"
                       className="w-full h-14 border-[#d4af37]/30 text-[#d4af37] hover:bg-[#d4af37]/10 font-bold text-xs uppercase tracking-[2px] rounded-2xl transition-all"
                       onClick={() => setShowForgotPassword(true)}
@@ -188,7 +188,7 @@ export function CustomerAuth({ onLogin, onPrivacyClick, onTermsClick }: Customer
                   </div>
                 </form>
               </TabsContent>
-              
+
               <TabsContent value="signup">
                 <form onSubmit={handleSignup} className="space-y-5">
                   <div className="space-y-2">
@@ -247,10 +247,10 @@ export function CustomerAuth({ onLogin, onPrivacyClick, onTermsClick }: Customer
                       />
                     </div>
                   </div>
-                  
+
                   <div className="pt-2">
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={isLoading}
                       className="w-full h-14 bg-[#d4af37] hover:bg-[#c9a227] text-black font-black text-sm uppercase tracking-[3px] rounded-2xl border-0 shadow-lg shadow-[#d4af37]/20 transition-all"
                     >
@@ -322,8 +322,8 @@ export function CustomerAuth({ onLogin, onPrivacyClick, onTermsClick }: Customer
                     />
                   </div>
                 </div>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={isLoading}
                   className="w-full h-12 bg-[#d4af37] text-black font-black text-xs uppercase tracking-[2px] rounded-xl border-0 shadow-lg shadow-[#d4af37]/10"
                 >
@@ -357,7 +357,7 @@ export function CustomerAuth({ onLogin, onPrivacyClick, onTermsClick }: Customer
               Please review our bespoke service conditions
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex-1 overflow-y-auto pr-4 space-y-6 text-slate-400 text-sm font-light py-6 custom-scrollbar">
             <section>
               <h3 className="text-[10px] font-bold text-[#d4af37] uppercase tracking-[2px] mb-3">1. Executive Summary</h3>

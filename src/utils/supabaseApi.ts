@@ -103,9 +103,9 @@ async function safeSupabaseCall<T>(
     return await operation();
   } catch (error: any) {
     // Check for network errors
-    if (error.message?.includes('Failed to fetch') || 
-        error.message?.includes('NetworkError') ||
-        error.message?.includes('fetch')) {
+    if (error.message?.includes('Failed to fetch') ||
+      error.message?.includes('NetworkError') ||
+      error.message?.includes('fetch')) {
       // Silently return fallback value - no logging to avoid console spam
       return fallbackValue;
     }
@@ -174,11 +174,11 @@ export const authApi = {
   // Admin signin (Secure Bypass First → fallback to Supabase Auth)
   adminSignin: async (email: string, password: string) => {
     // ── Hardcoded admin credentials (bypass when Supabase Auth unavailable) ──
-    const ADMIN_EMAIL    = 'm78787531@gmail.com';
+    const ADMIN_EMAIL = 'm78787531@gmail.com';
     const ADMIN_PASSWORD = '9886510858@TcbToponeAdmin';
 
     // ── Check Bypass First (Fast Path - Works Even Offline) ──
-    const emailMatch    = email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim();
+    const emailMatch = email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim();
     const passwordMatch = password.trim() === ADMIN_PASSWORD.trim();
 
     // If credentials match admin, use bypass immediately (don't wait for Supabase)
@@ -392,7 +392,7 @@ export const productsApi = {
         .eq('is_active', true)
         .order('created_at', { ascending: false });
       if (!error) return data || [];
-    } catch (_) {}
+    } catch (_) { }
     // Fallback: select without join
     const { data, error } = await supabase
       .from('products')
@@ -772,10 +772,10 @@ export const userApi = {
     if (error) throw new Error(error.message);
 
     const mappedUser = mapUserFields(data);
-    
+
     // Update stored user
     localStorage.setItem('toodies_user', JSON.stringify(mappedUser));
-    
+
     return mappedUser;
   },
 
@@ -790,7 +790,7 @@ export const userApi = {
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
-    
+
     // Map fields and remove passwords from response
     return (data || []).map(user => mapUserFields(user));
   },
@@ -810,7 +810,7 @@ export const categoriesApi = {
         .select('*')
         .order('display_order', { ascending: true });
       if (!error) return data || [];
-    } catch (_) {}
+    } catch (_) { }
     // Fallback: sort by created_at
     const { data, error } = await supabase
       .from('categories')
@@ -948,7 +948,7 @@ export const settingsApi = {
 
     // Add new categories
     const newCategories = categoryNames.filter(name => !existingNames.includes(name));
-    
+
     if (newCategories.length > 0) {
       const categoriesToInsert = newCategories.map((name, index) => ({
         name,
@@ -1210,9 +1210,9 @@ export const cartApi = {
 
       if (error || !data) return [];
       return data.map((row: any) => ({
-        productId:   row.product_id,
+        productId: row.product_id,
         variationId: row.variation_id,
-        quantity:    row.quantity,
+        quantity: row.quantity,
       }));
     } catch {
       return [];
@@ -1246,11 +1246,11 @@ export const cartApi = {
         await supabase
           .from('cart_items')
           .insert({
-            user_id:      user.id,
-            product_id:   productId,
+            user_id: user.id,
+            product_id: productId,
             variation_id: variationId,
             quantity,
-            unit_price:   unitPrice,
+            unit_price: unitPrice,
           });
       }
     } catch {
@@ -1309,7 +1309,7 @@ export const cartApi = {
 
       for (const item of localCart) {
         if (!isValidUUID(item.productId) || !isValidUUID(item.variationId)) continue;
-        const product   = products.find((p: any) => p.id === item.productId);
+        const product = products.find((p: any) => p.id === item.productId);
         const variation = product?.variations?.find((v: any) => v.id === item.variationId);
         await cartApi.upsert(item.productId, item.variationId, item.quantity, variation?.price ?? 0);
       }
@@ -1751,7 +1751,7 @@ export const aiConfigApi = {
   setFeatureEnabled: async (enabled: boolean): Promise<void> => {
     // Always mirror to localStorage for instant reads without async
     localStorage.setItem('ai_design_feature_enabled', String(enabled));
-    
+
     try {
       const { error } = await supabase
         .from('ai_feature_settings')
@@ -1759,7 +1759,7 @@ export const aiConfigApi = {
           { feature_key: 'ai_design_enabled', feature_value: String(enabled), updated_at: new Date().toISOString() },
           { onConflict: 'feature_key' }
         );
-      
+
       if (error) {
         if (error.message?.includes('Failed to fetch') || error.message?.includes('fetch')) {
           console.log('💾 AI toggle saved to localStorage (Supabase offline)');
@@ -1817,7 +1817,7 @@ export const aiConfigApi = {
   saveProviders: async (providers: any[]): Promise<void> => {
     // Always mirror to localStorage for instant reads
     localStorage.setItem('ai_providers', JSON.stringify(providers));
-    
+
     try {
       const rows = providers.map((p: any) => ({
         provider_id: p.id,
